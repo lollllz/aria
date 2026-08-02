@@ -5,6 +5,7 @@ import { buildSiteElements, styleFromMarketItem, sectionsForCategory } from '../
 import { useCanvasStore } from '../store/canvasStore'
 import { useMarketplaceStore } from '../store/marketplaceStore'
 import { useEffectsStore } from '../store/effectsStore'
+import { useProfileStore } from '../store/profileStore'
 import type { MarketCategory, MarketItem } from '../types'
 
 const cats: (MarketCategory | 'all')[] = ['all', 'business', 'portfolio', 'landing', 'restaurant', 'blog', 'theme']
@@ -146,6 +147,7 @@ function DetailModal({ item, owned, onClose, onGet, onOpen }: {
 const licenses = ['MIT', 'CC-BY', 'CC0', 'GPL'] as const
 
 function UploadModal({ onClose, onPublish }: { onClose: () => void; onPublish: (i: MarketItem) => void }) {
+  const author = useProfileStore((s) => s.name)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState<MarketCategory>('theme')
   const [license, setLicense] = useState<MarketItem['license']>('MIT')
@@ -165,7 +167,7 @@ function UploadModal({ onClose, onPublish }: { onClose: () => void; onPublish: (
     onPublish({
       id: `u${Date.now()}`,
       title: title.trim(),
-      author: 'you',
+      author: author || 'you',
       category,
       kind: category === 'theme' ? 'theme' : 'creation',
       license,

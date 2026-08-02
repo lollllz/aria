@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
 import type {
   CanvasElement, CanvasPage, DeviceGeo, DeviceId, ElementAction, ElementKind, ElementStyle, PageMeta,
@@ -124,7 +125,7 @@ const commit = (state: CanvasState): Partial<CanvasState> => ({
   future: [],
 })
 
-export const useCanvasStore = create<CanvasState>((set, get) => ({
+export const useCanvasStore = create<CanvasState>()(persist((set, get) => ({
   page: { width: 960, height: 720, background: '#0f0f16' },
   pages: [{ id: FIRST_PAGE, name: 'Home' }],
   currentPageId: FIRST_PAGE,
@@ -327,13 +328,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   // page and switch to it, so the user's existing pages are never clobbered.
   loadDesign: (pageName, seeds, bg) =>
     set((s) => {
-      const pid = nanoid(6)
+      // Reuse the current page if it's empty (e.g. the untouched starting page),
+      // so opening a template doesn't leave a stray blank "Home" page behind.
+      const currentEmpty = s.elements.filter((e) => e.pageId === s.currentPageId).length === 0
+      const onlyPage = s.pages.length === 1
+      const pid = currentEmpty ? s.currentPageId : nanoid(6)
       const els: CanvasElement[] = seeds.map((seed) => ({ ...seed, id: nanoid(6), pageId: pid }))
+      const pages = currentEmpty
+        ? s.pages.map((p) => (p.id === pid && onlyPage ? { ...p, name: pageName } : p))
+        : [...s.pages, { id: pid, name: pageName }]
       return {
         ...commit(s),
-        pages: [...s.pages, { id: pid, name: pageName }],
+        pages,
         currentPageId: pid,
-        elements: [...s.elements, ...els],
+        elements: [...s.elements.filter((e) => e.pageId !== pid), ...els],
         selectedId: null,
         page: bg ? { ...s.page, background: bg } : s.page,
       }
@@ -362,4 +370,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         history: [...s.history, { elements: s.elements, pages: s.pages }].slice(-50),
       }
     }),
+}), {
+  name: 'aria-canvas',
+  version: 1,
+  // Persist only the design itself — not undo history or transient selection.
+  partialize: (s) => ({
+    page: s.page, pages: s.pages, currentPageId: s.currentPageId,
+    elements: s.elements, device: s.device, autoAdaptive: s.autoAdaptive,
+  }),
 }))

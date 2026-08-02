@@ -102,7 +102,8 @@ export function buildSiteElements(opts: {
     els.push({
       kind: 'rectangle', x: cx, y: 404, width: 256, height: 156, rotation: 0,
       content: '', name: `Card ${i + 1}`, action: { type: 'none', target: '' },
-      style: mk({ background: st.surface, radius: st.radius, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }),
+      // Cap card radius so pill templates (radius 999) don't render cards as blobs.
+      style: mk({ background: st.surface, radius: Math.min(st.radius, 16), borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }),
     })
     els.push({
       kind: 'rectangle', x: cx + 20, y: 424, width: 36, height: 36, rotation: 0,

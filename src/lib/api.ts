@@ -29,6 +29,13 @@ export const api = {
   saveSite: (site: { id?: string; userId?: string; name: string; data: SiteData }) =>
     req<SiteRow>('/api/sites', { method: 'POST', body: JSON.stringify(site) }),
 
+  // Verify a Google ID token server-side and upsert the user in Neon.
+  authWithGoogle: (credential: string) =>
+    req<{ id: string; name: string; email: string; picture?: string }>('/api/auth', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+    }),
+
   listMarket: (opts: { kind?: string; category?: string; q?: string } = {}) => {
     const p = new URLSearchParams(Object.entries(opts).filter(([, v]) => v) as [string, string][])
     return req<MarketItem[]>(`/api/market${p.toString() ? `?${p}` : ''}`)

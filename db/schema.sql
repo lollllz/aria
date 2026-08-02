@@ -3,11 +3,13 @@
 
 create extension if not exists "pgcrypto"; -- for gen_random_uuid()
 
--- Users (minimal; extend with your auth provider's id/columns)
+-- Users (authenticated via Google Identity Services)
 create table if not exists users (
   id          uuid primary key default gen_random_uuid(),
   email       text unique not null,
   name        text,
+  google_sub  text unique,        -- Google account subject id
+  picture     text,               -- avatar URL
   created_at  timestamptz not null default now()
 );
 

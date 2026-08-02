@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
 import type { CustomEffect } from '../types'
 
@@ -13,7 +14,7 @@ interface EffectsState {
   closeMaker: () => void
 }
 
-export const useEffectsStore = create<EffectsState>((set) => ({
+export const useEffectsStore = create<EffectsState>()(persist((set) => ({
   customEffects: [],
   makerOpen: false,
 
@@ -28,4 +29,7 @@ export const useEffectsStore = create<EffectsState>((set) => ({
 
   openMaker: () => set({ makerOpen: true }),
   closeMaker: () => set({ makerOpen: false }),
+}), {
+  name: 'aria-effects',
+  partialize: (s) => ({ customEffects: s.customEffects }),
 }))

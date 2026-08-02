@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { X, Wand2, Save, Share2, Sparkles } from 'lucide-react'
 import { compileEffect, EFFECT_TEMPLATE, useEffectsStore } from '../../store/effectsStore'
 import { useMarketplaceStore } from '../../store/marketplaceStore'
+import { useProfileStore } from '../../store/profileStore'
 import type { MarketItem } from '../../types'
 
 const PREVIEW_ID = 'preview'
@@ -9,6 +10,7 @@ const PREVIEW_ID = 'preview'
 export default function EffectMaker() {
   const { closeMaker, addEffect } = useEffectsStore()
   const addItem = useMarketplaceStore((s) => s.addItem)
+  const author = useProfileStore((s) => s.name) || 'you'
   const [name, setName] = useState('My effect')
   const [css, setCss] = useState(EFFECT_TEMPLATE)
   const [shared, setShared] = useState(false)
@@ -17,16 +19,16 @@ export default function EffectMaker() {
   const previewCss = useMemo(() => compileEffect(css, PREVIEW_ID), [css])
 
   const save = () => {
-    addEffect(name, css)
+    addEffect(name, css, author)
     closeMaker()
   }
 
   const share = () => {
-    const id = addEffect(name, css)
+    const id = addEffect(name, css, author)
     const item: MarketItem = {
       id: `fx-${id}`,
       title: name.trim() || 'Custom effect',
-      author: 'you',
+      author,
       category: 'theme',
       kind: 'effect',
       license: 'MIT',

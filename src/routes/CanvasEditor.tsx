@@ -54,6 +54,26 @@ function ElementView({
   const s = el.style
   const hasHook = preview && el.action.type !== 'none'
   const canEdit = editable && !el.locked
+  const isTextKind = el.kind === 'text' || el.kind === 'heading' || el.kind === 'button'
+  const [editing, setEditing] = useState(false)
+  const editRef = useRef<HTMLDivElement>(null)
+
+  // When entering inline edit: seed the box with the current text (React leaves
+  // the children alone while editing, so typing never gets reconciled away),
+  // focus it, and select all.
+  useEffect(() => {
+    if (editing && editRef.current) {
+      const node = editRef.current
+      node.textContent = el.content
+      node.focus()
+      const r = document.createRange()
+      r.selectNodeContents(node)
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(r)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing])
 
   // Outer wrapper owns position, rotation and selection; it never animates so
   // handles stay put. The inner box owns the visual style + animation class,
@@ -118,7 +138,7 @@ function ElementView({
       id={`el-${el.id}`}
       style={outer}
       onPointerDown={(e) => {
-        if (preview) return
+        if (preview || editing) return
         e.stopPropagation()
         onSelect(el.id)
         if (canEdit) onStartMove(e, el, geo)
@@ -127,18 +147,34 @@ function ElementView({
         if (preview && hasHook) { e.stopPropagation(); onActivate(el) }
       }}
       onDoubleClick={(e) => {
-        if (preview || !['text', 'heading', 'button'].includes(el.kind)) return
+        if (preview || !isTextKind || !canEdit) return
         e.stopPropagation()
-        const next = prompt('Edit text', el.content)
-        if (next != null) onEditContent(el.id, next)
+        setEditing(true)
       }}
-      className={!preview && selected ? 'outline-2 outline-aria-brand' : undefined}
+      className={!preview && selected && !editing ? 'outline-2 outline-aria-brand' : undefined}
     >
-      <div style={inner} className={`${animClass} ${svgClass}`.trim() || undefined}>
-        {content}
+      <div
+        ref={editRef}
+        style={{ ...inner, cursor: editing ? 'text' : inner.cursor, outline: editing ? '2px solid #7c5cff' : undefined }}
+        className={`${animClass} ${svgClass}`.trim() || undefined}
+        contentEditable={editing}
+        suppressContentEditableWarning
+        onPointerDown={(e) => { if (editing) e.stopPropagation() }}
+        onInput={() => { if (editing) onEditContent(el.id, editRef.current?.innerText ?? '') }}
+        onBlur={() => {
+          if (!editing) return
+          onEditContent(el.id, (editRef.current?.innerText ?? '').trim())
+          setEditing(false)
+        }}
+        onKeyDown={(e) => {
+          if (editing && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur() }
+          if (editing && e.key === 'Escape') { e.preventDefault(); setEditing(false) }
+        }}
+      >
+        {editing ? null : content}
       </div>
 
-      {!preview && selected && canEdit &&
+      {!preview && selected && canEdit && !editing &&
         HANDLES.map((h) => {
           const pos: React.CSSProperties = { position: 'absolute' }
           if (h.includes('n')) pos.top = -5
@@ -361,12 +397,16 @@ export default function CanvasEditor() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowLinkMap(true)} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
-            <Link2 size={15} /> Link Map
-          </button>
-          <button onClick={loadStarter} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Sparkles size={15} /> Starter</button>
-          <button onClick={exportZip} title="Export a Vite + React project" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Download size={15} /> Export code</button>
-          <button onClick={clear} title="Clear this page" className="rounded-lg p-2 text-aria-muted hover:bg-red-500/10 hover:text-red-400"><Trash2 size={16} /></button>
+          {!preview && (
+            <>
+              <button onClick={() => setShowLinkMap(true)} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
+                <Link2 size={15} /> Link Map
+              </button>
+              <button onClick={loadStarter} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Sparkles size={15} /> Starter</button>
+              <button onClick={exportZip} title="Export a Vite + React project" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Download size={15} /> Export code</button>
+              <button onClick={clear} title="Clear this page" className="rounded-lg p-2 text-aria-muted hover:bg-red-500/10 hover:text-red-400"><Trash2 size={16} /></button>
+            </>
+          )}
           <button onClick={() => { setPreview((p) => !p); select(null) }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${preview ? 'bg-aria-brand-2 text-black' : 'bg-gradient-to-r from-aria-brand to-aria-brand-2 text-white'}`}>
             <Eye size={15} /> {preview ? 'Editing off' : 'Preview'}
           </button>
@@ -389,17 +429,21 @@ export default function CanvasEditor() {
             >
               {p.name}
             </button>
-            {pages.length > 1 && p.id === currentPageId && (
+            {!preview && pages.length > 1 && p.id === currentPageId && (
               <button onClick={() => removePage(p.id)} title="Delete page" className="rounded p-0.5 text-aria-muted hover:text-red-400">
                 <X size={12} />
               </button>
             )}
           </div>
         ))}
-        <button onClick={addPage} title="Add page" className="ml-1 flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
-          <Plus size={14} /> Page
-        </button>
-        <span className="ml-auto text-xs text-aria-muted">Double-click a tab to rename</span>
+        {!preview && (
+          <>
+            <button onClick={addPage} title="Add page" className="ml-1 flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
+              <Plus size={14} /> Page
+            </button>
+            <span className="ml-auto text-xs text-aria-muted">Double-click a tab to rename</span>
+          </>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1">

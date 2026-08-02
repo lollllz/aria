@@ -1,0 +1,14 @@
+# Netlify config — hosts the Neon-backed API (serverless functions).
+# The static frontend is deployed separately to GitHub Pages (see .github/workflows/deploy.yml).
+# If you'd rather host BOTH here, keep [build] and Netlify will serve dist/ too.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  node_bundler = "esbuild"
+  directory = "netlify/functions"
+
+# Netlify v2 functions declare their own routes via `export const config = { path }`,
+# so no manual redirects are required for /api/*.

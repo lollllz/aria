@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Type, Heading, Square, Circle, Image as ImageIcon, MousePointerClick,
   Undo2, Redo2, Trash2, Sparkles, Home, Eye, Grid3x3, Link2, Plus, X, Upload,
-  Monitor, Tablet, Smartphone, Wand2, Download,
+  Monitor, Tablet, Smartphone, Wand2, Download, HelpCircle,
 } from 'lucide-react'
 import JSZip from 'jszip'
 import { exportSite, type ExportDesign } from '../lib/exportSite'
@@ -13,6 +13,7 @@ import { effectiveGeo, autoLayout, autoLayoutHeight, type EffGeo } from '../lib/
 import Inspector from '../components/canvas/Inspector'
 import LinkMap from '../components/canvas/LinkMap'
 import EffectMaker from '../components/canvas/EffectMaker'
+import Tutorial from '../components/canvas/Tutorial'
 import { useEffectsStore } from '../store/effectsStore'
 
 const palette: { kind: ElementKind; label: string; icon: typeof Type }[] = [
@@ -212,8 +213,18 @@ export default function CanvasEditor() {
   const [showLinkMap, setShowLinkMap] = useState(false)
   const makerOpen = useEffectsStore((s) => s.makerOpen)
   const customEffects = useEffectsStore((s) => s.customEffects)
+  const [showTutorial, setShowTutorial] = useState(false)
   const drag = useRef<DragState>(null)
   const svgInput = useRef<HTMLInputElement>(null)
+
+  // Show the onboarding tutorial on the first canvas visit.
+  useEffect(() => {
+    if (!localStorage.getItem('aria-tutorial-seen')) setShowTutorial(true)
+  }, [])
+  const closeTutorial = () => {
+    localStorage.setItem('aria-tutorial-seen', '1')
+    setShowTutorial(false)
+  }
 
   // Read an uploaded .svg file's text and drop it on the canvas as vector art.
   const onSvgFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -367,6 +378,7 @@ export default function CanvasEditor() {
           <button onClick={undo} title="Undo (⌘Z)" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><Undo2 size={16} /></button>
           <button onClick={redo} title="Redo (⌘⇧Z)" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><Redo2 size={16} /></button>
           <button onClick={() => setShowGrid((g) => !g)} title="Toggle grid" className={`rounded-lg p-2 hover:bg-aria-panel ${showGrid ? 'text-aria-brand-2' : 'text-aria-muted'}`}><Grid3x3 size={16} /></button>
+          <button onClick={() => setShowTutorial(true)} title="Tutorial" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><HelpCircle size={16} /></button>
         </div>
 
         <div className="flex items-center gap-0.5 rounded-lg border border-aria-border bg-aria-panel p-0.5">
@@ -544,6 +556,7 @@ export default function CanvasEditor() {
 
       {showLinkMap && <LinkMap onClose={() => setShowLinkMap(false)} />}
       {makerOpen && <EffectMaker />}
+      {showTutorial && <Tutorial onClose={closeTutorial} />}
     </div>
   )
 }

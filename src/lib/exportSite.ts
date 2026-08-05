@@ -1,5 +1,5 @@
 import { compileEffect } from './effects'
-import type { CanvasElement, CanvasPage, CustomEffect, PageMeta } from '../types'
+import type { CanvasElement, CanvasPage, CustomEffect, PageMeta, SiteDbConfig } from '../types'
 
 export interface ExportDesign {
   name: string
@@ -8,6 +8,162 @@ export interface ExportDesign {
   elements: CanvasElement[]
   effects: CustomEffect[]
   autoAdaptive: boolean
+  /** When enabled, a working database connector is bundled with the export. */
+  db?: SiteDbConfig
+}
+
+const PG_TYPE: Record<string, string> = {
+  text: 'text',
+  number: 'numeric',
+  boolean: 'boolean',
+  timestamp: 'timestamptz',
+}
+
+const safeName = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '') || 'items'
+
+// ── Files bundled into the export when the site has a database ─────────────
+function dbFiles(db: SiteDbConfig, siteName: string): Record<string, string> {
+  const collections = db.collections.filter((c) => c.name.trim())
+
+  const schema = `-- Schema for ${siteName}
+-- Run once against your database:  psql "$DATABASE_URL" -f db/schema.sql
+create extension if not exists "pgcrypto";
+
+${collections.map((c) => {
+  const t = safeName(c.name)
+  const cols = c.fields
+    .filter((f) => f.name.trim())
+    .map((f) => `  ${safeName(f.name)} ${PG_TYPE[f.type] ?? 'text'},`)
+    .join('\n')
+  return `create table if not exists ${t} (
+  id uuid primary key default gen_random_uuid(),
+${cols}
+  created_at timestamptz not null default now()
+);`
+}).join('\n\n')}
+`
+
+  // One serverless endpoint per collection: GET to list, POST to insert.
+  const fn = `import { neon } from '@neondatabase/serverless'
+
+const sql = neon(process.env.DATABASE_URL)
+const ALLOWED = ${JSON.stringify(collections.map((c) => safeName(c.name)))}
+const cors = {
+  'access-control-allow-origin': process.env.ALLOWED_ORIGIN || '*',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
+  'access-control-allow-headers': 'content-type',
+}
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...cors } })
+
+// /api/data/:collection  — GET lists rows, POST inserts one.
+export default async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors })
+  try {
+    const url = new URL(req.url)
+    const name = url.pathname.split('/').filter(Boolean).pop()
+    // Only tables defined in the site's schema are reachable.
+    if (!ALLOWED.includes(name)) return json({ error: 'unknown collection' }, 404)
+
+    if (req.method === 'GET') {
+      const rows = await sql(\`select * from \${name} order by created_at desc limit 200\`)
+      return json(rows)
+    }
+
+    if (req.method === 'POST') {
+      const body = await req.json()
+      const keys = Object.keys(body).filter((k) => /^[a-z0-9_]+$/i.test(k))
+      if (!keys.length) return json({ error: 'no fields' }, 400)
+      const cols = keys.join(', ')
+      const params = keys.map((_, i) => '$' + (i + 1)).join(', ')
+      const rows = await sql(
+        \`insert into \${name} (\${cols}) values (\${params}) returning *\`,
+        keys.map((k) => body[k]),
+      )
+      return json(rows[0], 201)
+    }
+
+    return json({ error: 'method not allowed' }, 405)
+  } catch (err) {
+    return json({ error: String(err) }, 500)
+  }
+}
+
+export const config = { path: '/api/data/:collection' }
+`
+
+  const client = `// Tiny database client for this site.
+// Set VITE_API_BASE to your deployed API (leave empty when same-origin).
+const BASE = (import.meta.env.VITE_API_BASE || '').replace(/\\/+$/, '')
+
+async function request(path, init) {
+  const res = await fetch(BASE + path, {
+    ...init,
+    headers: { 'content-type': 'application/json', ...(init && init.headers) },
+  })
+  if (!res.ok) throw new Error(res.status + ' ' + (await res.text()))
+  return res.json()
+}
+
+/** List rows from a collection, newest first. */
+export const list = (collection) => request('/api/data/' + collection)
+
+/** Insert a row, e.g. save({ name, email, message }) into "contacts". */
+export const save = (collection, row) =>
+  request('/api/data/' + collection, { method: 'POST', body: JSON.stringify(row) })
+
+export const db = { list, save }
+export default db
+`
+
+  const example = collections[0]
+  const readme = `# Database
+
+This site ships with a working database connector.
+
+## 1. Create a database
+${db.provider === 'neon'
+  ? 'Create a free project at https://neon.tech and copy the **pooled** connection string.'
+  : 'Provision any Postgres database and copy its connection string.'}
+
+## 2. Create the tables
+\`\`\`bash
+psql "$DATABASE_URL" -f db/schema.sql
+\`\`\`
+
+Collections in this site: ${collections.map((c) => '`' + safeName(c.name) + '`').join(', ') || '(none)'}
+
+## 3. Deploy the API
+The endpoint lives in \`netlify/functions/data.mjs\` (Netlify). Deploy the project,
+then set these environment variables **on the server**:
+
+| Variable | Value |
+| --- | --- |
+| \`DATABASE_URL\` | your connection string (keep secret) |
+| \`ALLOWED_ORIGIN\` | the origin your site is served from |
+
+Install the driver once: \`npm i @neondatabase/serverless\`
+
+## 4. Use it in your site
+\`\`\`js
+import db from './src/lib/db.js'
+
+${example ? `// read
+const rows = await db.list('${safeName(example.name)}')
+
+// write
+await db.save('${safeName(example.name)}', { ${example.fields.filter((f) => f.name).slice(0, 3).map((f) => `${safeName(f.name)}: '…'`).join(', ')} })` : "const rows = await db.list('items')"}
+\`\`\`
+
+> Your connection string stays on the server — it is never exposed to the browser.
+`
+
+  return {
+    'db/schema.sql': schema,
+    'netlify/functions/data.mjs': fn,
+    'src/lib/db.js': client,
+    'DATABASE.md': readme,
+  }
 }
 
 // Built-in animation keyframes/classes, shipped with every export.
@@ -173,13 +329,19 @@ export function exportSite(design: ExportDesign): Record<string, string> {
   const name = slug(design.name)
   const effectsCss = design.effects.map((e) => compileEffect(e.css, e.id)).join('\n\n')
 
+  const hasDb = Boolean(design.db?.enabled && design.db.collections.some((c) => c.name.trim()))
+
   const pkg = {
     name,
     private: true,
     version: '0.0.0',
     type: 'module',
     scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
-    dependencies: { react: '^18.3.1', 'react-dom': '^18.3.1' },
+    dependencies: {
+      react: '^18.3.1',
+      'react-dom': '^18.3.1',
+      ...(hasDb ? { '@neondatabase/serverless': '^0.10.4' } : {}),
+    },
     devDependencies: { '@vitejs/plugin-react': '^4.3.1', vite: '^5.4.0' },
   }
 
@@ -212,5 +374,12 @@ export function exportSite(design: ExportDesign): Record<string, string> {
       2,
     ),
     'src/styles.css': `${RESET_CSS}\n\n/* built-in animations */\n${ANIM_CSS}\n\n/* custom effects */\n${effectsCss}\n`,
+    ...(hasDb
+      ? {
+          ...dbFiles(design.db as SiteDbConfig, design.name),
+          '.env.example': `# API base for the database endpoints (leave empty when same-origin)\nVITE_API_BASE=\n\n# Server-only — never commit real values\nDATABASE_URL=\nALLOWED_ORIGIN=\n`,
+          'netlify.toml': `[build]\n  command = "npm run build"\n  publish = "dist"\n\n[functions]\n  node_bundler = "esbuild"\n  directory = "netlify/functions"\n`,
+        }
+      : {}),
   }
 }

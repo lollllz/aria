@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { LayoutTemplate, Store, MousePointer2, X, User, Database } from 'lucide-react'
+import { LayoutTemplate, Store, MousePointer2, X, User, Server } from 'lucide-react'
 import ariaMark from '../assets/aria-mark.svg'
 import { useProfileStore } from '../store/profileStore'
 import GoogleSignInButton from './GoogleSignInButton'
@@ -12,7 +12,7 @@ const links = [
   { to: '/canvas', label: 'Canvas', icon: MousePointer2 },
   { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/marketplace', label: 'Marketplace', icon: Store },
-  { to: '/settings', label: 'Database', icon: Database },
+  { to: '/settings', label: 'Hosting', icon: Server },
 ]
 
 export default function Navbar() {

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { nanoid } from 'nanoid'
 import type {
   CanvasElement, CanvasPage, DeviceGeo, DeviceId, ElementAction, ElementKind, ElementStyle, PageMeta,
+  SiteDbConfig,
 } from '../types'
 
 const defaultStyle = (): ElementStyle => ({
@@ -88,6 +89,7 @@ interface CanvasState {
   selectedId: string | null
   device: DeviceId
   autoAdaptive: boolean
+  siteDb: SiteDbConfig
   history: HistorySnapshot[]
   future: HistorySnapshot[]
 
@@ -97,6 +99,7 @@ interface CanvasState {
   setGeo: (id: string, patch: DeviceGeo) => void // device-aware geometry edit
   setDevice: (d: DeviceId) => void
   setAutoAdaptive: (b: boolean) => void
+  setSiteDb: (patch: Partial<SiteDbConfig>) => void
   updateStyle: (id: string, patch: Partial<ElementStyle>) => void
   setAction: (id: string, action: ElementAction) => void
   removeElement: (id: string) => void
@@ -133,6 +136,17 @@ export const useCanvasStore = create<CanvasState>()(persist((set, get) => ({
   selectedId: null,
   device: 'desktop',
   autoAdaptive: false,
+  siteDb: {
+    enabled: false,
+    provider: 'neon',
+    collections: [
+      { name: 'contacts', fields: [
+        { name: 'name', type: 'text' },
+        { name: 'email', type: 'text' },
+        { name: 'message', type: 'text' },
+      ] },
+    ],
+  },
   history: [],
   future: [],
 
@@ -194,6 +208,7 @@ export const useCanvasStore = create<CanvasState>()(persist((set, get) => ({
 
   setDevice: (d) => set({ device: d }),
   setAutoAdaptive: (b) => set({ autoAdaptive: b }),
+  setSiteDb: (patch) => set((s) => ({ siteDb: { ...s.siteDb, ...patch } })),
 
   updateStyle: (id, patch) =>
     set((s) => ({
@@ -376,6 +391,6 @@ export const useCanvasStore = create<CanvasState>()(persist((set, get) => ({
   // Persist only the design itself — not undo history or transient selection.
   partialize: (s) => ({
     page: s.page, pages: s.pages, currentPageId: s.currentPageId,
-    elements: s.elements, device: s.device, autoAdaptive: s.autoAdaptive,
+    elements: s.elements, device: s.device, autoAdaptive: s.autoAdaptive, siteDb: s.siteDb,
   }),
 }))

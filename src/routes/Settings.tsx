@@ -114,11 +114,14 @@ export default function Settings() {
       {/* Header + live status */}
       <div className="a-fade-up mb-8">
         <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight">
-          <Database size={24} className="text-aria-brand-2" /> Database
+          <Database size={24} className="text-aria-brand-2" /> Aria hosting
         </h1>
         <p className="mt-2 text-sm text-aria-muted">
-          Connect Aria to your own database so sites, accounts and the marketplace are stored in the cloud.
-          We recommend <span className="text-aria-text">Neon</span> — serverless Postgres with a free tier.
+          This is the backend for <span className="text-aria-text">this Aria install</span> — where accounts, saved
+          designs and the shared marketplace live. Self-hosting Aria? Point it at your own database below.
+          <br />
+          <span className="text-aria-muted">Building a site that needs its own database? Use{' '}
+          <span className="text-aria-brand-2">Database</span> inside the canvas — that one ships with your export.</span>
         </p>
       </div>
 

@@ -45,11 +45,11 @@ export default function EffectMaker() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={closeMaker}>
+    <div className="a-fade-in fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={closeMaker}>
       {/* preview styles are injected live */}
       <style>{`.aria-fx-${PREVIEW_ID}{}${previewCss}`}</style>
 
-      <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="a-pop-in flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-aria-border px-5 py-3">
           <h2 className="flex items-center gap-2 text-base font-bold"><Wand2 size={17} className="text-aria-brand-2" /> Effect Maker</h2>
           <button onClick={closeMaker} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={18} /></button>

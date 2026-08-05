@@ -28,7 +28,7 @@ function Card({ item, owned, onGet, onOpen, onDetail }: {
   onDetail: () => void
 }) {
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel transition hover:-translate-y-1 hover:border-aria-brand/50">
+    <div className="a-lift group flex flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel/70 backdrop-blur hover:border-aria-brand/50">
       <button onClick={onDetail} className="relative block h-36 text-left" style={{ background: item.cover }}>
         <span className="absolute left-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">
           {item.kind}
@@ -90,8 +90,8 @@ function DetailModal({ item, owned, onClose, onGet, onOpen }: {
   onOpen: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="a-fade-in fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="a-pop-in w-full max-w-xl overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
         <div className="relative h-44" style={{ background: item.cover }}>
           <button onClick={onClose} className="absolute right-3 top-3 rounded-lg bg-black/40 p-1.5 text-white backdrop-blur hover:bg-black/60"><X size={16} /></button>
           <span className="absolute left-4 top-4 rounded-full bg-black/40 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">{item.kind}</span>
@@ -180,8 +180,8 @@ function UploadModal({ onClose, onPublish }: { onClose: () => void; onPublish: (
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl border border-aria-border bg-aria-panel p-6" onClick={(e) => e.stopPropagation()}>
+    <div className="a-fade-in fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="a-pop-in w-full max-w-lg rounded-2xl border border-aria-border bg-aria-panel p-6" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-bold"><Upload size={18} /> Publish to marketplace</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={18} /></button>
@@ -297,7 +297,7 @@ export default function Marketplace() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="a-fade-up mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Marketplace</h1>
           <p className="text-sm text-aria-muted">Free &amp; open — every template, CSS theme and creation is free to use, remix and share.</p>
@@ -309,7 +309,7 @@ export default function Marketplace() {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="a-fade-up a-d1 mb-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-lg border border-aria-border bg-aria-panel px-3 py-2">
           <Search size={16} className="text-aria-muted" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search themes, creations, authors…"
@@ -343,7 +343,7 @@ export default function Marketplace() {
           <p>No creations match your filters yet.</p>
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="a-stagger grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((item) => (
             <Card
               key={item.id}

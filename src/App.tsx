@@ -4,6 +4,7 @@ import Landing from './routes/Landing'
 import CanvasEditor from './routes/CanvasEditor'
 import Templates from './routes/Templates'
 import Marketplace from './routes/Marketplace'
+import Settings from './routes/Settings'
 import EffectStyles from './components/canvas/EffectStyles'
 
 function Shell() {
@@ -14,12 +15,14 @@ function Shell() {
   return (
     <div className="flex h-full flex-col">
       {!bareChrome && <Navbar />}
-      <main className="min-h-0 flex-1">
+      {/* keyed by route so each page animates in on navigation */}
+      <main key={pathname} className="a-fade-in min-h-0 flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/canvas" element={<CanvasEditor />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </main>
     </div>

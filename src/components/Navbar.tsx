@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
-import { LayoutTemplate, Store, MousePointer2, X, User } from 'lucide-react'
+import { LayoutTemplate, Store, MousePointer2, X, User, Database } from 'lucide-react'
 import ariaMark from '../assets/aria-mark.svg'
 import { useProfileStore } from '../store/profileStore'
 import GoogleSignInButton from './GoogleSignInButton'
 import { GOOGLE_CLIENT_ID, decodeIdToken } from '../lib/googleAuth'
 import { api } from '../lib/api'
+import { apiBase } from '../store/settingsStore'
 
 const links = [
   { to: '/canvas', label: 'Canvas', icon: MousePointer2 },
   { to: '/templates', label: 'Templates', icon: LayoutTemplate },
   { to: '/marketplace', label: 'Marketplace', icon: Store },
+  { to: '/settings', label: 'Database', icon: Database },
 ]
 
 export default function Navbar() {
@@ -24,7 +26,7 @@ export default function Navbar() {
     const p = decodeIdToken(jwt)
     setUser({ userId: p.sub, name: p.name, email: p.email, picture: p.picture })
     setOpen(false)
-    if (import.meta.env.VITE_API_BASE) {
+    if (apiBase()) {
       try {
         const u = await api.authWithGoogle(jwt)
         setUser({ userId: u.id, name: u.name, email: u.email, picture: u.picture })
@@ -33,30 +35,41 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-aria-border bg-aria-bg/80 px-5 backdrop-blur">
-      <Link to="/" className="flex items-center gap-2">
-        <img src={ariaMark} alt="Aria" className="h-8 w-8" />
-        <span className="text-lg font-bold tracking-tight">Aria</span>
+    <header className="a-glass a-slide-down sticky top-0 z-50 flex h-16 items-center justify-between border-b border-aria-border/70 px-5">
+      <Link to="/" className="group flex items-center gap-2.5">
+        <img
+          src={ariaMark}
+          alt="Aria"
+          className="h-8 w-8 transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:rotate-[8deg] group-hover:scale-110"
+        />
+        <span className="text-lg font-semibold tracking-tight">Aria</span>
         <span className="ml-1 rounded-full border border-aria-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-aria-muted">
           beta
         </span>
       </Link>
 
-      <nav className="flex items-center gap-1">
+      <nav className="flex items-center gap-1 rounded-full border border-aria-border/70 bg-aria-panel/50 p-1">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+              `group relative flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-300 ${
                 isActive
-                  ? 'bg-aria-panel-2 text-aria-text'
+                  ? 'bg-aria-panel-2 text-aria-text shadow-sm'
                   : 'text-aria-muted hover:bg-aria-panel hover:text-aria-text'
               }`
             }
           >
-            <Icon size={16} />
-            {label}
+            {({ isActive }) => (
+              <>
+                <Icon
+                  size={16}
+                  className={`transition-transform duration-300 ${isActive ? 'text-aria-brand-2' : 'group-hover:scale-110'}`}
+                />
+                <span className="hidden sm:inline">{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -94,8 +107,8 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-sm rounded-2xl border border-aria-border bg-aria-panel p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="a-fade-in fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
+          <div className="a-pop-in w-full max-w-sm rounded-2xl border border-aria-border bg-aria-panel p-6" onClick={(e) => e.stopPropagation()}>
             <div className="mb-1 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-bold"><User size={18} /> Sign in to Aria</h2>
               <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={18} /></button>

@@ -1,15 +1,30 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-aria-bg: #0b0b0f;
-  --color-aria-panel: #14141b;
-  --color-aria-panel-2: #1c1c26;
-  --color-aria-border: #2a2a37;
-  --color-aria-text: #e7e7ee;
-  --color-aria-muted: #9a9aad;
+  --color-aria-bg: #08080c;
+  --color-aria-panel: #121218;
+  --color-aria-panel-2: #1a1a23;
+  --color-aria-border: #26262f;
+  --color-aria-text: #f2f2f7;
+  --color-aria-muted: #98989f;
   --color-aria-brand: #7c5cff;
   --color-aria-brand-2: #22d3ee;
-  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* System stack first — matches Apple's SF on macOS/iOS, Roboto on Android */
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter',
+    'Segoe UI', Roboto, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Motion system ───────────────────────────────────────────────────────────
+   Apple-ish springs + Material's emphasized easing. Everything on the site
+   animates with one of these so motion feels like a single language. */
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* overshoot / bouncy */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);     /* fast out, soft land */
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);      /* Material 3 */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 0.16s;
+  --dur: 0.28s;
+  --dur-slow: 0.5s;
 }
 
 html,
@@ -24,7 +39,12 @@ body {
   color: var(--color-aria-text);
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em; /* Apple-style optical tightening */
 }
+
+/* Tighter tracking on large type, like SF Display */
+h1, h2, h3 { letter-spacing: -0.022em; }
 
 ::-webkit-scrollbar {
   width: 10px;
@@ -33,9 +53,139 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #2a2a37;
   border-radius: 8px;
+  transition: background var(--dur) var(--ease-smooth);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ── Entrance animations ─────────────────────────────────────────────────── */
+@keyframes aria-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes aria-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes aria-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes aria-pop-in {
+  0%   { opacity: 0; transform: scale(0.9) translateY(8px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes aria-slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes aria-slide-in-right {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes aria-slide-in-left {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.a-slide-in-right { animation: aria-slide-in-right var(--dur) var(--ease-out-expo) both; }
+.a-slide-in-left  { animation: aria-slide-in-left var(--dur) var(--ease-out-expo) both; }
+
+.a-fade-up   { animation: aria-fade-up var(--dur-slow) var(--ease-out-expo) both; }
+.a-fade-in   { animation: aria-fade-in var(--dur-slow) var(--ease-smooth) both; }
+.a-scale-in  { animation: aria-scale-in var(--dur) var(--ease-out-expo) both; }
+.a-pop-in    { animation: aria-pop-in var(--dur) var(--ease-spring) both; }
+.a-slide-down{ animation: aria-slide-down var(--dur) var(--ease-out-expo) both; }
+
+/* Stagger helpers — put on children of a list/grid */
+.a-stagger > *          { animation: aria-fade-up var(--dur-slow) var(--ease-out-expo) both; }
+.a-stagger > *:nth-child(1) { animation-delay: .04s }
+.a-stagger > *:nth-child(2) { animation-delay: .09s }
+.a-stagger > *:nth-child(3) { animation-delay: .14s }
+.a-stagger > *:nth-child(4) { animation-delay: .19s }
+.a-stagger > *:nth-child(5) { animation-delay: .24s }
+.a-stagger > *:nth-child(6) { animation-delay: .29s }
+.a-stagger > *:nth-child(7) { animation-delay: .34s }
+.a-stagger > *:nth-child(8) { animation-delay: .39s }
+.a-stagger > *:nth-child(n+9) { animation-delay: .44s }
+
+.a-d1 { animation-delay: .06s }
+.a-d2 { animation-delay: .12s }
+.a-d3 { animation-delay: .18s }
+.a-d4 { animation-delay: .24s }
+.a-d5 { animation-delay: .3s }
+
+/* ── Interaction primitives ──────────────────────────────────────────────── */
+/* Every button/link gets springy press feedback (Apple-style) */
+button, a, [role='button'] {
+  transition:
+    transform var(--dur-fast) var(--ease-spring),
+    background-color var(--dur) var(--ease-smooth),
+    border-color var(--dur) var(--ease-smooth),
+    color var(--dur) var(--ease-smooth),
+    box-shadow var(--dur) var(--ease-smooth),
+    opacity var(--dur) var(--ease-smooth);
+}
+button:active:not(:disabled), [role='button']:active { transform: scale(0.97); }
+
+/* Lift on hover — for cards and tiles */
+.a-lift { transition: transform var(--dur) var(--ease-out-expo), box-shadow var(--dur) var(--ease-out-expo), border-color var(--dur) var(--ease-smooth); }
+.a-lift:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -18px rgba(0,0,0,.75); }
+
+/* Subtle press-scale for tiles that shouldn't lift */
+.a-press { transition: transform var(--dur-fast) var(--ease-spring); }
+.a-press:active { transform: scale(0.98); }
+
+/* Frosted glass surface (Apple) */
+.a-glass {
+  background: color-mix(in oklab, var(--color-aria-panel) 72%, transparent);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* Focus ring — Google-style, accessible and calm */
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-aria-brand);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Scroll reveal (paired with an IntersectionObserver) */
+.a-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease-out-expo), transform .7s var(--ease-out-expo); }
+.a-reveal.is-in { opacity: 1; transform: none; }
+
+/* Animated gradient text / borders */
+@keyframes aria-gradient-pan { 0%,100% { background-position: 0% 50% } 50% { background-position: 100% 50% } }
+.a-gradient-text {
+  background: linear-gradient(100deg, #fff 10%, var(--color-aria-brand) 40%, var(--color-aria-brand-2) 60%, #fff 90%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: aria-gradient-pan 8s var(--ease-smooth) infinite;
+}
+
+/* Ambient hero glow */
+@keyframes aria-drift {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  50%     { transform: translate3d(0,-24px,0) scale(1.08); }
+}
+.a-drift { animation: aria-drift 14s var(--ease-smooth) infinite; }
+
+/* Resize handles pop slightly on hover for easier targeting */
+.aria-handle:hover > span { transform: scale(1.35); }
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .a-reveal { opacity: 1; transform: none; }
 }
 
 .aria-grid-bg {

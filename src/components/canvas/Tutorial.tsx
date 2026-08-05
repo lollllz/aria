@@ -48,8 +48,8 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
   const last = i === STEPS.length - 1
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-aria-border bg-aria-panel shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="a-fade-in fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="a-pop-in w-full max-w-md overflow-hidden rounded-2xl border border-aria-border bg-aria-panel shadow-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Gradient header with the step icon */}
         <div className="relative flex h-28 items-center justify-center bg-gradient-to-br from-aria-brand to-aria-brand-2">
           <Icon size={44} className="text-white" strokeWidth={1.75} />

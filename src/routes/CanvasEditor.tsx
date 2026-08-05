@@ -33,7 +33,7 @@ const DEVICES: { id: DeviceId; label: string; icon: typeof Monitor }[] = [
 
 type DragState =
   | { mode: 'move'; id: string; startX: number; startY: number; origX: number; origY: number }
-  | { mode: 'resize'; id: string; handle: string; startX: number; startY: number; orig: EffGeo }
+  | { mode: 'resize'; id: string; handle: string; startX: number; startY: number; orig: EffGeo; origFont: number; origPad: number; scalesType: boolean }
   | null
 
 const HANDLES = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w']
@@ -177,23 +177,39 @@ function ElementView({
 
       {!preview && selected && canEdit && !editing &&
         HANDLES.map((h) => {
+          // Big invisible hit area (24px) with a small visible dot inside, so
+          // handles are easy to grab without looking heavy.
+          const HIT = 24
+          const half = HIT / 2
           const pos: React.CSSProperties = { position: 'absolute' }
-          if (h.includes('n')) pos.top = -5
-          if (h.includes('s')) pos.bottom = -5
-          if (h.includes('w')) pos.left = -5
-          if (h.includes('e')) pos.right = -5
-          if (h === 'n' || h === 's') { pos.left = '50%'; pos.marginLeft = -5 }
-          if (h === 'e' || h === 'w') { pos.top = '50%'; pos.marginTop = -5 }
+          if (h.includes('n')) pos.top = -half
+          if (h.includes('s')) pos.bottom = -half
+          if (h.includes('w')) pos.left = -half
+          if (h.includes('e')) pos.right = -half
+          if (h === 'n' || h === 's') { pos.left = '50%'; pos.marginLeft = -half }
+          if (h === 'e' || h === 'w') { pos.top = '50%'; pos.marginTop = -half }
           const cursor =
             h === 'n' || h === 's' ? 'ns-resize' :
             h === 'e' || h === 'w' ? 'ew-resize' :
             h === 'nw' || h === 'se' ? 'nwse-resize' : 'nesw-resize'
+          const isCorner = h.length === 2
           return (
             <div
               key={h}
               onPointerDown={(e) => { e.stopPropagation(); onStartResize(e, h, el, geo) }}
-              style={{ ...pos, width: 10, height: 10, background: '#fff', border: '1.5px solid #7c5cff', borderRadius: 3, cursor, transform: `rotate(${-el.rotation}deg)` }}
-            />
+              className="aria-handle group/handle"
+              style={{ ...pos, width: HIT, height: HIT, cursor, transform: `rotate(${-el.rotation}deg)`, display: 'grid', placeItems: 'center', touchAction: 'none' }}
+            >
+              <span
+                style={{
+                  width: isCorner ? 11 : 9, height: isCorner ? 11 : 9,
+                  background: '#fff', border: '2px solid #7c5cff',
+                  borderRadius: isCorner ? 3 : 999,
+                  boxShadow: '0 1px 4px rgba(0,0,0,.35)',
+                  transition: 'transform .16s cubic-bezier(.34,1.56,.64,1)',
+                }}
+              />
+            </div>
           )
         })}
     </div>
@@ -206,7 +222,7 @@ export default function CanvasEditor() {
     addElement, addSvg, updateElement, select, removeElement, duplicateElement,
     clear, loadStarter, undo, redo,
     addPage, removePage, renamePage, setCurrentPage,
-    device, autoAdaptive, setDevice, setAutoAdaptive, setGeo,
+    device, autoAdaptive, setDevice, setAutoAdaptive, setGeo, updateStyle,
   } = useCanvasStore()
   const [preview, setPreview] = useState(false)
   const [showGrid, setShowGrid] = useState(true)
@@ -271,12 +287,40 @@ export default function CanvasEditor() {
         const dx = e.clientX - d.startX
         const dy = e.clientY - d.startY
         const o = d.orig
-        let { x, y, width, height } = o
+        const corner = d.handle.length === 2
+        // Corners keep the aspect ratio when scaling type, or when Shift is held.
+        const lockAspect = corner && (d.scalesType || e.shiftKey)
+
+        let width = o.width
+        let height = o.height
         if (d.handle.includes('e')) width = Math.max(12, o.width + dx)
+        if (d.handle.includes('w')) width = Math.max(12, o.width - dx)
         if (d.handle.includes('s')) height = Math.max(12, o.height + dy)
-        if (d.handle.includes('w')) { width = Math.max(12, o.width - dx); x = o.x + (o.width - width) }
-        if (d.handle.includes('n')) { height = Math.max(12, o.height - dy); y = o.y + (o.height - height) }
+        if (d.handle.includes('n')) height = Math.max(12, o.height - dy)
+
+        if (lockAspect) {
+          // Drive both dimensions off the larger intent so it feels natural.
+          const k = Math.max(width / o.width, height / o.height)
+          width = Math.max(12, o.width * k)
+          height = Math.max(12, o.height * k)
+        }
+
+        // Anchor the opposite edge so the box grows away from the grabbed corner.
+        let x = o.x
+        let y = o.y
+        if (d.handle.includes('w')) x = o.x + (o.width - width)
+        if (d.handle.includes('n')) y = o.y + (o.height - height)
+
         setGeo(d.id, { x, y, width, height })
+
+        // Scale the type + padding by the same factor so the element really resizes.
+        if (d.scalesType) {
+          const k = width / o.width
+          updateStyle(d.id, {
+            fontSize: Math.max(6, Math.round(d.origFont * k * 10) / 10),
+            padding: Math.max(0, Math.round(d.origPad * k)),
+          })
+        }
       }
     }
     const onUp = () => { drag.current = null }
@@ -286,7 +330,7 @@ export default function CanvasEditor() {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
-  }, [setGeo])
+  }, [setGeo, updateStyle])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -317,7 +361,14 @@ export default function CanvasEditor() {
     drag.current = { mode: 'move', id: _el.id, startX: e.clientX, startY: e.clientY, origX: geo.x, origY: geo.y }
   }
   const startResize = (e: React.PointerEvent, handle: string, _el: CanvasElement, geo: EffGeo) => {
-    drag.current = { mode: 'resize', id: _el.id, handle, startX: e.clientX, startY: e.clientY, orig: { ...geo } }
+    // Corner drags scale the type with the box (like PowerPoint/Figma), so text
+    // elements visibly resize instead of just growing an invisible container.
+    // Side handles only change the box, letting text re-wrap.
+    const scalesType = handle.length === 2 && ['text', 'heading', 'button'].includes(_el.kind)
+    drag.current = {
+      mode: 'resize', id: _el.id, handle, startX: e.clientX, startY: e.clientY, orig: { ...geo },
+      origFont: _el.style.fontSize, origPad: _el.style.padding, scalesType,
+    }
   }
 
   // Switch which device we're viewing/editing (frame size derives from it).
@@ -460,14 +511,14 @@ export default function CanvasEditor() {
 
       <div className="flex min-h-0 flex-1">
         {!preview && (
-          <aside className="w-16 shrink-0 border-r border-aria-border bg-aria-panel py-3">
+          <aside className="a-fade-in w-16 shrink-0 border-r border-aria-border bg-aria-panel/80 py-3 backdrop-blur">
             <div className="flex flex-col items-center gap-1">
               {palette.map(({ kind, label, icon: Icon }) => (
                 <button
                   key={kind}
                   title={`Add ${label}`}
                   onClick={() => addElement(kind)}
-                  className="group flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-aria-muted transition hover:bg-aria-panel-2 hover:text-aria-text"
+                  className="group flex w-14 flex-col items-center gap-1 rounded-xl py-2 text-aria-muted transition-all duration-300 hover:bg-aria-panel-2 hover:text-aria-text active:scale-95"
                 >
                   <Icon size={18} />
                   <span className="text-[10px]">{label}</span>
@@ -477,7 +528,7 @@ export default function CanvasEditor() {
               <button
                 title="Upload your own SVG (from Illustrator, Figma…)"
                 onClick={() => svgInput.current?.click()}
-                className="group flex w-14 flex-col items-center gap-1 rounded-lg py-2 text-aria-brand-2 transition hover:bg-aria-panel-2"
+                className="group flex w-14 flex-col items-center gap-1 rounded-xl py-2 text-aria-brand-2 transition-all duration-300 hover:bg-aria-panel-2 active:scale-95"
               >
                 <Upload size={18} />
                 <span className="text-[10px]">SVG</span>
@@ -548,7 +599,7 @@ export default function CanvasEditor() {
         </div>
 
         {!preview && (
-          <aside className="w-72 shrink-0 border-l border-aria-border bg-aria-panel">
+          <aside className="a-slide-in-right w-72 shrink-0 border-l border-aria-border bg-aria-panel/80 backdrop-blur">
             <Inspector element={selected} />
           </aside>
         )}

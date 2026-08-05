@@ -93,7 +93,7 @@ export default function LinkMap({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-aria-bg/95 backdrop-blur-sm">
+    <div className="a-fade-in fixed inset-0 z-50 flex flex-col bg-aria-bg/95 backdrop-blur-sm">
       {/* Header */}
       <div className="flex h-12 items-center justify-between border-b border-aria-border px-4">
         <div className="flex items-center gap-2 text-sm font-semibold">

@@ -138,18 +138,18 @@ export default function Templates() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Templates</h1>
+      <div className="a-fade-up mb-6">
+        <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
         <p className="text-sm text-aria-muted">Each one has its own distinct look. Pick a starting point, tune the settings, make it yours.</p>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="a-fade-up a-d1 mb-6 flex flex-wrap gap-2">
         {categories.map((c) => (
           <button
             key={c}
             onClick={() => setCat(c)}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium capitalize transition ${
-              cat === c ? 'border-aria-brand bg-aria-brand/15 text-aria-text' : 'border-aria-border text-aria-muted hover:text-aria-text'
+            className={`a-press rounded-full border px-4 py-1.5 text-sm font-medium capitalize transition-all duration-300 ${
+              cat === c ? 'border-aria-brand bg-aria-brand/15 text-aria-text shadow-[0_0_0_3px] shadow-aria-brand/10' : 'border-aria-border text-aria-muted hover:border-aria-brand/40 hover:text-aria-text'
             }`}
           >
             {c}
@@ -157,15 +157,15 @@ export default function Templates() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr_260px]">
+      <div className="a-fade-up a-d2 grid gap-6 lg:grid-cols-[280px_1fr_260px]">
         {/* Template list */}
-        <div className="space-y-2">
+        <div className="a-stagger space-y-2">
           {filtered.map((t) => (
             <button
               key={t.id}
               onClick={() => pick(t)}
-              className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
-                t.id === activeId ? 'border-aria-brand bg-aria-panel' : 'border-aria-border hover:bg-aria-panel'
+              className={`a-press flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300 ${
+                t.id === activeId ? 'border-aria-brand bg-aria-panel shadow-[0_0_0_3px] shadow-aria-brand/10' : 'border-aria-border hover:border-aria-brand/40 hover:bg-aria-panel'
               }`}
             >
               {/* Mini identity swatch */}

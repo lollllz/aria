@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Star, Download, Search, Upload, X, Plus, Check, MousePointer2, Wand2 } from 'lucide-react'
+import { Star, Download, Search, Upload, X, Plus, Check, MousePointer2, Wand2, Cloud, CloudOff, Loader2 } from 'lucide-react'
 import { buildSiteElements, styleFromMarketItem, sectionsForCategory } from '../lib/buildTemplate'
 import { useCanvasStore } from '../store/canvasStore'
 import { useMarketplaceStore } from '../store/marketplaceStore'
 import { useEffectsStore } from '../store/effectsStore'
 import { useProfileStore } from '../store/profileStore'
+import { api } from '../lib/api'
+import { cloudEnabled, rowToMarketItem, marketItemToBody } from '../lib/cloud'
 import type { MarketCategory, MarketItem } from '../types'
 
 const cats: (MarketCategory | 'all')[] = ['all', 'business', 'portfolio', 'landing', 'restaurant', 'blog', 'theme']
@@ -248,16 +250,37 @@ export default function Marketplace() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [detail, setDetail] = useState<MarketItem | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [remote, setRemote] = useState<MarketItem[] | null>(null)
+  const [loadingRemote, setLoadingRemote] = useState(cloudEnabled())
+
+  // Pull the shared catalogue from the database. Seed/local items stay visible
+  // so the page still works when the backend is unreachable.
+  useEffect(() => {
+    if (!cloudEnabled()) { setLoadingRemote(false); return }
+    let cancelled = false
+    api.listMarket()
+      .then((rows) => { if (!cancelled) setRemote((rows as unknown as Record<string, unknown>[]).map(rowToMarketItem)) })
+      .catch(() => { if (!cancelled) setRemote(null) })
+      .finally(() => { if (!cancelled) setLoadingRemote(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // Shared (cloud) items first, then anything local that isn't already there.
+  const allItems = useMemo(() => {
+    if (!remote) return items
+    const seen = new Set(remote.map((r) => r.title + '|' + r.author))
+    return [...remote, ...items.filter((i) => !seen.has(i.title + '|' + i.author))]
+  }, [remote, items])
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase()
-    return items.filter((i) => {
+    return allItems.filter((i) => {
       if (cat !== 'all' && i.category !== cat) return false
       if (kind !== 'all' && i.kind !== kind) return false
       if (query && !`${i.title} ${i.author} ${i.tags.join(' ')}`.toLowerCase().includes(query)) return false
       return true
     })
-  }, [items, cat, kind, q])
+  }, [allItems, cat, kind, q])
 
   const flash = (msg: string) => {
     setToast(msg)
@@ -271,6 +294,12 @@ export default function Marketplace() {
     if (!owned.has(item.id)) {
       setOwned((s) => new Set(s).add(item.id))
       incrementDownloads(item.id)
+      // Count the download in the shared catalogue too (best-effort).
+      if (cloudEnabled()) {
+        api.getFree(item.id)
+          .then(() => setRemote((prev) => prev?.map((r) => (r.id === item.id ? { ...r, downloads: r.downloads + 1 } : r)) ?? prev))
+          .catch(() => {})
+      }
       if (item.kind === 'effect' && item.effectCss) {
         installEffect(item.effectName || item.title, item.effectCss, item.author)
         flash(`“${item.title}” installed — find it in the animation picker`)
@@ -278,6 +307,25 @@ export default function Marketplace() {
       }
     }
     flash(`“${item.title}” added to your library`)
+  }
+
+  // Publish: write to the shared catalogue when connected, else keep it local.
+  const publish = async (i: MarketItem) => {
+    setUploadOpen(false)
+    if (!cloudEnabled()) {
+      addItem(i)
+      flash(`“${i.title}” published on this device`)
+      return
+    }
+    try {
+      const row = await api.publishMarket(marketItemToBody(i) as never)
+      const saved = rowToMarketItem(row as unknown as Record<string, unknown>)
+      setRemote((prev) => [saved, ...(prev ?? [])])
+      flash(`“${i.title}” published to the marketplace`)
+    } catch {
+      addItem(i)
+      flash(`“${i.title}” saved locally — could not reach the marketplace`)
+    }
   }
 
   // Generate a real editable design from the item and open it in the canvas.
@@ -301,6 +349,15 @@ export default function Marketplace() {
         <div>
           <h1 className="text-2xl font-bold">Marketplace</h1>
           <p className="text-sm text-aria-muted">Free &amp; open — every template, CSS theme and creation is free to use, remix and share.</p>
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs">
+            {loadingRemote ? (
+              <span className="flex items-center gap-1.5 text-aria-muted"><Loader2 size={12} className="animate-spin" /> Loading shared catalogue…</span>
+            ) : remote ? (
+              <span className="flex items-center gap-1.5 text-emerald-400"><Cloud size={12} /> Shared marketplace · {remote.length} published by the community</span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-aria-muted"><CloudOff size={12} /> Showing local items — connect a database to share</span>
+            )}
+          </p>
         </div>
         <button onClick={() => setUploadOpen(true)}
           className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-aria-brand/20 transition hover:opacity-90">
@@ -360,7 +417,7 @@ export default function Marketplace() {
       {uploadOpen && (
         <UploadModal
           onClose={() => setUploadOpen(false)}
-          onPublish={(i) => { addItem(i); setUploadOpen(false); flash(`“${i.title}” published`) }}
+          onPublish={publish}
         />
       )}
 

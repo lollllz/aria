@@ -3,6 +3,8 @@ import { X, Wand2, Save, Share2, Sparkles } from 'lucide-react'
 import { compileEffect, EFFECT_TEMPLATE, useEffectsStore } from '../../store/effectsStore'
 import { useMarketplaceStore } from '../../store/marketplaceStore'
 import { useProfileStore } from '../../store/profileStore'
+import { api } from '../../lib/api'
+import { cloudEnabled, marketItemToBody } from '../../lib/cloud'
 import type { MarketItem } from '../../types'
 
 const PREVIEW_ID = 'preview'
@@ -23,7 +25,7 @@ export default function EffectMaker() {
     closeMaker()
   }
 
-  const share = () => {
+  const share = async () => {
     const id = addEffect(name, css, author)
     const item: MarketItem = {
       id: `fx-${id}`,
@@ -40,7 +42,13 @@ export default function EffectMaker() {
       effectCss: css,
       effectName: name.trim() || 'Custom effect',
     }
-    addItem(item)
+    // Publish to the shared catalogue when a database is connected; otherwise
+    // keep it in this device's marketplace.
+    if (cloudEnabled()) {
+      try { await api.publishMarket(marketItemToBody(item) as never) } catch { addItem(item) }
+    } else {
+      addItem(item)
+    }
     setShared(true)
   }
 

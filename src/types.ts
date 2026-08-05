@@ -57,6 +57,26 @@ export interface ElementStyle {
   glowColor: string // colour used by the glow animation
 }
 
+// ── Exported-site database ──────────────────────────────────────────────────
+// Configuration for the database that ships INSIDE a user's exported website.
+// Aria bakes a working connector + schema into the download so the client can
+// point their own site at their own database.
+export interface DbField {
+  name: string
+  type: 'text' | 'number' | 'boolean' | 'timestamp'
+}
+
+export interface DbCollection {
+  name: string          // becomes a table, e.g. "contacts"
+  fields: DbField[]
+}
+
+export interface SiteDbConfig {
+  enabled: boolean
+  provider: 'neon' | 'postgres'
+  collections: DbCollection[]
+}
+
 // A user-authored animation: raw CSS (scoped to `.effect`) saved as a reusable
 // effect that shows up in the animation picker and can be shared.
 export interface CustomEffect {

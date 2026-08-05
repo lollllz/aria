@@ -40,6 +40,13 @@ export default async (req: Request, _ctx: Context) => {
       return json(rows[0], 201)
     }
 
+    if (req.method === 'DELETE') {
+      const id = url.searchParams.get('id')
+      if (!id) return json({ error: 'id required' }, 400)
+      await sql`delete from market_items where id = ${id}`
+      return json({ deleted: id })
+    }
+
     return json({ error: 'method not allowed' }, 405)
   } catch (err) {
     return json({ error: String(err) }, 500)

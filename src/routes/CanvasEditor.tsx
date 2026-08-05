@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   Type, Heading, Square, Circle, Image as ImageIcon, MousePointerClick,
   Undo2, Redo2, Trash2, Sparkles, Home, Eye, Grid3x3, Link2, Plus, X, Upload,
-  Monitor, Tablet, Smartphone, Wand2, Download, HelpCircle,
+  Monitor, Tablet, Smartphone, Wand2, Download, HelpCircle, Cloud, Database,
 } from 'lucide-react'
 import JSZip from 'jszip'
 import { exportSite, type ExportDesign } from '../lib/exportSite'
@@ -14,6 +14,8 @@ import Inspector from '../components/canvas/Inspector'
 import LinkMap from '../components/canvas/LinkMap'
 import EffectMaker from '../components/canvas/EffectMaker'
 import Tutorial from '../components/canvas/Tutorial'
+import SitesPanel from '../components/canvas/SitesPanel'
+import SiteDatabase from '../components/canvas/SiteDatabase'
 import { useEffectsStore } from '../store/effectsStore'
 
 const palette: { kind: ElementKind; label: string; icon: typeof Type }[] = [
@@ -222,7 +224,7 @@ export default function CanvasEditor() {
     addElement, addSvg, updateElement, select, removeElement, duplicateElement,
     clear, loadStarter, undo, redo,
     addPage, removePage, renamePage, setCurrentPage,
-    device, autoAdaptive, setDevice, setAutoAdaptive, setGeo, updateStyle,
+    device, autoAdaptive, setDevice, setAutoAdaptive, setGeo, updateStyle, siteDb,
   } = useCanvasStore()
   const [preview, setPreview] = useState(false)
   const [showGrid, setShowGrid] = useState(true)
@@ -230,6 +232,8 @@ export default function CanvasEditor() {
   const makerOpen = useEffectsStore((s) => s.makerOpen)
   const customEffects = useEffectsStore((s) => s.customEffects)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showSites, setShowSites] = useState(false)
+  const [showDb, setShowDb] = useState(false)
   const drag = useRef<DragState>(null)
   const svgInput = useRef<HTMLInputElement>(null)
 
@@ -383,6 +387,7 @@ export default function CanvasEditor() {
       elements,
       effects: customEffects,
       autoAdaptive,
+      db: siteDb,
     }
     const zip = new JSZip()
     for (const [path, contents] of Object.entries(exportSite(design))) zip.file(path, contents)
@@ -462,8 +467,14 @@ export default function CanvasEditor() {
         <div className="flex items-center gap-2">
           {!preview && (
             <>
+              <button onClick={() => setShowSites(true)} title="Save / open your sites" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
+                <Cloud size={15} /> My sites
+              </button>
               <button onClick={() => setShowLinkMap(true)} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
                 <Link2 size={15} /> Link Map
+              </button>
+              <button onClick={() => setShowDb(true)} title="Database for the site you are building" className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${siteDb.enabled ? 'border-aria-brand/50 bg-aria-brand/10 text-aria-brand-2' : 'border-aria-border text-aria-muted hover:text-aria-text'}`}>
+                <Database size={15} /> Database
               </button>
               <button onClick={loadStarter} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Sparkles size={15} /> Starter</button>
               <button onClick={exportZip} title="Export a Vite + React project" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Download size={15} /> Export code</button>
@@ -608,6 +619,8 @@ export default function CanvasEditor() {
       {showLinkMap && <LinkMap onClose={() => setShowLinkMap(false)} />}
       {makerOpen && <EffectMaker />}
       {showTutorial && <Tutorial onClose={closeTutorial} />}
+      {showSites && <SitesPanel onClose={() => setShowSites(false)} />}
+      {showDb && <SiteDatabase onClose={() => setShowDb(false)} />}
     </div>
   )
 }

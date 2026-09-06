@@ -4,6 +4,7 @@ import { LayoutTemplate, Store, MousePointer2, X, User, Server } from 'lucide-re
 import ariaMark from '../assets/aria-mark.svg'
 import { useProfileStore } from '../store/profileStore'
 import GoogleSignInButton from './GoogleSignInButton'
+import Dialog from './Dialog'
 import { GOOGLE_CLIENT_ID, decodeIdToken } from '../lib/googleAuth'
 import { api } from '../lib/api'
 import { apiBase } from '../store/settingsStore'
@@ -39,7 +40,7 @@ export default function Navbar() {
       <Link to="/" className="group flex items-center gap-2.5">
         <img
           src={ariaMark}
-          alt="Aria"
+          alt=""
           className="h-8 w-8 transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:rotate-[8deg] group-hover:scale-110"
         />
         <span className="text-lg font-semibold tracking-tight">Aria</span>
@@ -48,11 +49,12 @@ export default function Navbar() {
         </span>
       </Link>
 
-      <nav className="flex items-center gap-1 rounded-full border border-aria-border/70 bg-aria-panel/50 p-1">
+      <nav aria-label="Primary" className="flex items-center gap-1 rounded-full border border-aria-border/70 bg-aria-panel/50 p-1">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
+            aria-label={label}
             className={({ isActive }) =>
               `group relative flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-300 ${
                 isActive
@@ -65,6 +67,7 @@ export default function Navbar() {
               <>
                 <Icon
                   size={16}
+                  aria-hidden
                   className={`transition-transform duration-300 ${isActive ? 'text-aria-brand-2' : 'group-hover:scale-110'}`}
                 />
                 <span className="hidden sm:inline">{label}</span>
@@ -78,13 +81,14 @@ export default function Navbar() {
         {name ? (
           <button
             onClick={signOut}
+            aria-label={`Sign out ${name}`}
             title="Sign out"
             className="flex items-center gap-2 rounded-lg border border-aria-border px-2.5 py-1.5 text-sm font-medium text-aria-text hover:bg-aria-panel"
           >
             {picture ? (
               <img src={picture} alt="" className="h-6 w-6 rounded-full" referrerPolicy="no-referrer" />
             ) : (
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-aria-brand to-aria-brand-2 text-xs font-bold text-white">
+              <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-br from-aria-brand to-aria-brand-2 text-xs font-bold text-white">
                 {name[0]?.toUpperCase()}
               </span>
             )}
@@ -100,53 +104,64 @@ export default function Navbar() {
         )}
         <Link
           to="/canvas"
-          className="rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 px-3.5 py-1.5 text-sm font-semibold text-white shadow-lg shadow-aria-brand/20 transition hover:opacity-90"
+          className="a-cta rounded-lg px-3.5 py-1.5 text-sm font-semibold shadow-lg shadow-aria-brand/20 transition"
         >
           Start building
         </Link>
       </div>
 
       {open && (
-        <div className="a-fade-in fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setOpen(false)}>
-          <div className="a-pop-in w-full max-w-sm rounded-2xl border border-aria-border bg-aria-panel p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="mb-1 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-bold"><User size={18} /> Sign in to Aria</h2>
-              <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={18} /></button>
-            </div>
-
-            {GOOGLE_CLIENT_ID ? (
-              <>
-                <p className="mb-4 text-sm leading-relaxed text-aria-muted">
-                  Sign in with Google to save your sites and publish to the marketplace.
-                </p>
-                <div className="flex justify-center py-1">
-                  <GoogleSignInButton onCredential={onCredential} />
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="mb-4 text-sm leading-relaxed text-aria-muted">
-                  Pick a display name — it's saved on this device and used as the author on anything you publish. (Google Sign-In turns on once it's configured.)
-                </p>
-                <input
-                  autoFocus
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) { setName(draft); setOpen(false) } }}
-                  placeholder="Display name"
-                  className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none focus:border-aria-brand"
-                />
-                <button
-                  onClick={() => { if (draft.trim()) { setName(draft); setOpen(false) } }}
-                  disabled={!draft.trim()}
-                  className="mt-4 w-full rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
-                >
-                  Continue
-                </button>
-              </>
-            )}
+        <Dialog
+          onClose={() => setOpen(false)}
+          labelledBy="signin-title"
+          zClass="z-[60]"
+          panelClassName="a-pop-in w-full max-w-sm rounded-2xl border border-aria-border bg-aria-panel p-6"
+        >
+          <div className="mb-1 flex items-center justify-between">
+            <h2 id="signin-title" className="flex items-center gap-2 text-lg font-bold"><User size={18} aria-hidden /> Sign in to Aria</h2>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+              className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"
+            >
+              <X size={18} aria-hidden />
+            </button>
           </div>
-        </div>
+
+          {GOOGLE_CLIENT_ID ? (
+            <>
+              <p className="mb-4 text-sm leading-relaxed text-aria-muted">
+                Sign in with Google to save your sites and publish to the marketplace.
+              </p>
+              <div className="flex justify-center py-1">
+                <GoogleSignInButton onCredential={onCredential} />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mb-4 text-sm leading-relaxed text-aria-muted">
+                Pick a display name — it's saved on this device and used as the author on anything you publish. (Google Sign-In turns on once it's configured.)
+              </p>
+              <label htmlFor="display-name" className="mb-1 block text-xs font-medium text-aria-muted">Display name</label>
+              <input
+                id="display-name"
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) { setName(draft); setOpen(false) } }}
+                placeholder="Display name"
+                className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm focus:border-aria-brand"
+              />
+              <button
+                onClick={() => { if (draft.trim()) { setName(draft); setOpen(false) } }}
+                disabled={!draft.trim()}
+                className="a-cta mt-4 w-full rounded-lg py-2.5 text-sm font-semibold transition"
+              >
+                Continue
+              </button>
+            </>
+          )}
+        </Dialog>
       )}
     </header>
   )

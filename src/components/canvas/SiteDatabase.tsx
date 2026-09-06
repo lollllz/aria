@@ -4,6 +4,7 @@ import {
 } from 'lucide-react'
 import { useCanvasStore } from '../../store/canvasStore'
 import type { DbCollection, DbField } from '../../types'
+import Dialog from '../Dialog'
 
 const TYPES: DbField['type'][] = ['text', 'number', 'boolean', 'timestamp']
 const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '')
@@ -40,16 +41,19 @@ export default function SiteDatabase({ onClose }: { onClose: () => void }) {
     : ''
 
   return (
-    <div className="a-fade-in fixed inset-0 z-[65] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div
-        className="a-pop-in flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog
+      onClose={onClose}
+      labelledBy="sitedb-title"
+      zClass="z-[65]"
+      panelClassName="a-pop-in flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel"
+    >
         <div className="flex items-center justify-between border-b border-aria-border px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <Database size={17} className="text-aria-brand-2" /> Site database
+          <h2 id="sitedb-title" className="flex items-center gap-2 text-base font-semibold">
+            <Database size={17} aria-hidden className="text-aria-brand-2" /> Site database
           </h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={17} /></button>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
+            <X size={17} aria-hidden />
+          </button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
@@ -61,31 +65,38 @@ export default function SiteDatabase({ onClose }: { onClose: () => void }) {
           </p>
 
           {/* Enable */}
-          <label className="mb-5 flex items-center justify-between rounded-xl border border-aria-border bg-aria-panel-2/50 px-4 py-3">
-            <span>
+          <div className="mb-5 flex items-center justify-between rounded-xl border border-aria-border bg-aria-panel-2/50 px-4 py-3">
+            <span id="db-enable-label">
               <span className="block text-sm font-medium">Include a database in this site</span>
               <span className="block text-xs text-aria-muted">Adds a connector, schema and API to the export.</span>
             </span>
             <button
+              type="button"
+              role="switch"
+              aria-checked={siteDb.enabled}
+              aria-labelledby="db-enable-label"
               onClick={() => setSiteDb({ enabled: !siteDb.enabled })}
               className={`h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors duration-300 ${siteDb.enabled ? 'bg-aria-brand' : 'bg-aria-panel-2'}`}
             >
               <span className={`block h-5 w-5 rounded-full bg-white transition-transform duration-300 ${siteDb.enabled ? 'translate-x-5' : ''}`} />
             </button>
-          </label>
+          </div>
 
           {siteDb.enabled && (
             <div className="a-fade-up space-y-4">
               {/* Provider */}
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-aria-muted">Provider</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div role="radiogroup" aria-label="Provider" className="grid grid-cols-2 gap-2">
                   {([
                     { id: 'neon' as const, name: 'Neon', desc: 'Serverless Postgres · recommended' },
                     { id: 'postgres' as const, name: 'Postgres', desc: 'Any Postgres database' },
                   ]).map((p) => (
                     <button
                       key={p.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={siteDb.provider === p.id}
                       onClick={() => setSiteDb({ provider: p.id })}
                       className={`a-press rounded-xl border p-3 text-left transition-all duration-300 ${
                         siteDb.provider === p.id
@@ -118,10 +129,11 @@ export default function SiteDatabase({ onClose }: { onClose: () => void }) {
                           value={c.name}
                           onChange={(e) => patchCollection(ci, { name: e.target.value })}
                           placeholder="collection name"
-                          className="min-w-0 flex-1 rounded-lg border border-aria-border bg-aria-panel-2 px-2.5 py-1.5 font-mono text-sm outline-none transition-colors focus:border-aria-brand"
+                          aria-label={`Collection ${ci + 1} name`}
+                          className="min-w-0 flex-1 rounded-lg border border-aria-border bg-aria-panel-2 px-2.5 py-1.5 font-mono text-sm transition-colors focus:border-aria-brand"
                         />
-                        <button onClick={() => removeCollection(ci)} title="Remove collection" className="rounded-lg p-1.5 text-aria-muted hover:bg-red-500/10 hover:text-red-400">
-                          <Trash2 size={14} />
+                        <button onClick={() => removeCollection(ci)} aria-label={`Remove collection ${c.name || ci + 1}`} title="Remove collection" className="rounded-lg p-1.5 text-aria-muted hover:bg-red-500/10 hover:text-red-400">
+                          <Trash2 size={14} aria-hidden />
                         </button>
                       </div>
 
@@ -132,17 +144,19 @@ export default function SiteDatabase({ onClose }: { onClose: () => void }) {
                               value={f.name}
                               onChange={(e) => patchField(ci, fi, { name: e.target.value })}
                               placeholder="field"
-                              className="min-w-0 flex-1 rounded-lg border border-aria-border bg-aria-panel-2 px-2.5 py-1 font-mono text-xs outline-none transition-colors focus:border-aria-brand"
+                              aria-label={`Field ${fi + 1} name`}
+                              className="min-w-0 flex-1 rounded-lg border border-aria-border bg-aria-panel-2 px-2.5 py-1 font-mono text-xs transition-colors focus:border-aria-brand"
                             />
                             <select
                               value={f.type}
                               onChange={(e) => patchField(ci, fi, { type: e.target.value as DbField['type'] })}
-                              className="rounded-lg border border-aria-border bg-aria-panel-2 px-2 py-1 text-xs outline-none focus:border-aria-brand"
+                              aria-label={`Field ${fi + 1} type`}
+                              className="rounded-lg border border-aria-border bg-aria-panel-2 px-2 py-1 text-xs focus:border-aria-brand"
                             >
                               {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
-                            <button onClick={() => removeField(ci, fi)} className="rounded p-1 text-aria-muted hover:text-red-400">
-                              <X size={13} />
+                            <button onClick={() => removeField(ci, fi)} aria-label={`Remove field ${f.name || fi + 1}`} className="rounded p-1 text-aria-muted hover:text-red-400">
+                              <X size={13} aria-hidden />
                             </button>
                           </div>
                         ))}
@@ -200,11 +214,10 @@ export default function SiteDatabase({ onClose }: { onClose: () => void }) {
           <span className="text-xs text-aria-muted">
             {siteDb.enabled ? 'Included in your next “Export code” download.' : 'Off — your export stays a static site.'}
           </span>
-          <button onClick={onClose} className="rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+          <button onClick={onClose} className="a-cta rounded-lg px-4 py-2 text-sm font-semibold transition">
             Done
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }

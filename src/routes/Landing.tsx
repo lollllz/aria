@@ -81,10 +81,10 @@ export default function Landing() {
           <div className="a-fade-up a-d3 mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/canvas"
-              className="group flex items-center gap-2 rounded-2xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-7 py-3.5 text-base font-semibold text-white shadow-[0_10px_40px_-12px] shadow-aria-brand/60 transition hover:shadow-[0_16px_50px_-12px] hover:shadow-aria-brand/70"
+              className="a-cta group flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-semibold shadow-[0_10px_40px_-12px] shadow-aria-brand/60 transition hover:shadow-[0_16px_50px_-12px] hover:shadow-aria-brand/70"
             >
               Open the canvas
-              <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+              <ArrowRight size={18} aria-hidden className="transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
             <Link
               to="/templates"
@@ -97,7 +97,7 @@ export default function Landing() {
           <div className="a-fade-up a-d4 mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-aria-muted">
             {audience.map(({ icon: Icon, label, text }) => (
               <div key={label} className="flex items-center gap-2">
-                <Icon size={16} className="text-aria-brand-2" />
+                <Icon size={16} aria-hidden className="text-aria-brand-2" />
                 <span className="font-semibold text-aria-text">{label}</span>
                 <span>{text}</span>
               </div>
@@ -117,9 +117,9 @@ export default function Landing() {
               {/* Hover sheen */}
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <div className={`mb-5 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br ${accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3`}>
-                <Icon size={22} />
+                <Icon size={22} aria-hidden />
               </div>
-              <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+              <h2 className="mb-2 text-lg font-semibold">{title}</h2>
               <p className="text-sm leading-relaxed text-aria-muted">{body}</p>
               <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-aria-brand-2 opacity-0 transition-all duration-300 group-hover:gap-2 group-hover:opacity-100">
                 Explore <ArrowRight size={14} />
@@ -144,7 +144,7 @@ export default function Landing() {
                 data-reveal-delay={i * 70}
                 className="a-reveal a-lift rounded-2xl border border-aria-border bg-aria-panel/60 p-6 backdrop-blur hover:border-aria-brand/40"
               >
-                <Icon size={20} className="mb-4 text-aria-brand-2" />
+                <Icon size={20} aria-hidden className="mb-4 text-aria-brand-2" />
                 <h3 className="mb-1.5 font-semibold">{title}</h3>
                 <p className="text-sm leading-relaxed text-aria-muted">{body}</p>
               </div>
@@ -161,10 +161,10 @@ export default function Landing() {
           </p>
           <Link
             to="/canvas"
-            className="group relative mt-8 inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-7 py-3.5 text-base font-semibold text-white shadow-[0_10px_40px_-12px] shadow-aria-brand/60"
+            className="a-cta group relative mt-8 inline-flex items-center gap-2 rounded-2xl px-7 py-3.5 text-base font-semibold shadow-[0_10px_40px_-12px] shadow-aria-brand/60"
           >
             Start building
-            <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+            <ArrowRight size={18} aria-hidden className="transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
         </section>
       </div>

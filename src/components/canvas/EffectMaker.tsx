@@ -6,6 +6,7 @@ import { useProfileStore } from '../../store/profileStore'
 import { api } from '../../lib/api'
 import { cloudEnabled, marketItemToBody } from '../../lib/cloud'
 import type { MarketItem } from '../../types'
+import Dialog from '../Dialog'
 
 const PREVIEW_ID = 'preview'
 
@@ -53,41 +54,51 @@ export default function EffectMaker() {
   }
 
   return (
-    <div className="a-fade-in fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={closeMaker}>
-      {/* preview styles are injected live */}
+    <Dialog
+      onClose={closeMaker}
+      labelledBy="effect-maker-title"
+      zClass="z-[60]"
+      panelClassName="a-pop-in flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel"
+    >
       <style>{`.aria-fx-${PREVIEW_ID}{}${previewCss}`}</style>
 
-      <div className="a-pop-in flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-aria-border px-5 py-3">
-          <h2 className="flex items-center gap-2 text-base font-bold"><Wand2 size={17} className="text-aria-brand-2" /> Effect Maker</h2>
-          <button onClick={closeMaker} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={18} /></button>
+          <h2 id="effect-maker-title" className="flex items-center gap-2 text-base font-bold"><Wand2 size={17} aria-hidden className="text-aria-brand-2" /> Effect Maker</h2>
+          <button onClick={closeMaker} aria-label="Close" className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
+            <X size={18} aria-hidden />
+          </button>
         </div>
 
         <div className="grid min-h-0 flex-1 gap-0 md:grid-cols-[1fr_300px]">
           {/* Code editor */}
           <div className="flex min-h-0 flex-col border-r border-aria-border">
             <div className="border-b border-aria-border px-4 py-2">
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-aria-muted">Effect name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm outline-none focus:border-aria-brand" />
+              <label htmlFor="effect-name" className="block text-[11px] font-semibold uppercase tracking-wider text-aria-muted">Effect name</label>
+              <input id="effect-name" value={name} onChange={(e) => setName(e.target.value)}
+                className="mt-1 w-full rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand" />
             </div>
-            <div className="flex items-center justify-between px-4 pt-2 text-[11px] font-semibold uppercase tracking-wider text-aria-muted">
+            <label htmlFor="effect-css" className="flex items-center justify-between px-4 pt-2 text-[11px] font-semibold uppercase tracking-wider text-aria-muted">
               CSS <span className="font-normal normal-case text-aria-muted">target <code className="text-aria-brand-2">.effect</code></span>
-            </div>
+            </label>
             <textarea
+              id="effect-css"
               value={css} onChange={(e) => setCss(e.target.value)} spellCheck={false}
-              className="min-h-[280px] flex-1 resize-none bg-transparent px-4 py-2 font-mono text-[12px] leading-relaxed text-aria-text outline-none"
+              className="min-h-[280px] flex-1 resize-none bg-transparent px-4 py-2 font-mono text-[12px] leading-relaxed text-aria-text"
             />
           </div>
 
           {/* Live preview */}
           <div className="flex min-h-0 flex-col">
             <div className="border-b border-aria-border px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-aria-muted">Live preview</div>
-            <div className="flex flex-1 items-center justify-center bg-aria-bg p-6"
-              style={{ ['--aria-anim-dur' as string]: '1.4s', ['--aria-anim-amt' as string]: 1, ['--aria-glow' as string]: '#7c5cff' }}>
-              <button className={`aria-fx-${PREVIEW_ID} rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-6 py-3 text-sm font-semibold text-white shadow-lg`}>
+            <div
+              className="flex flex-1 items-center justify-center bg-aria-bg p-6"
+              role="img"
+              aria-label="Effect preview"
+              style={{ ['--aria-anim-dur' as string]: '1.4s', ['--aria-anim-amt' as string]: 1, ['--aria-glow' as string]: '#7c5cff' }}
+            >
+              <div aria-hidden className={`aria-fx-${PREVIEW_ID} rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-6 py-3 text-sm font-semibold text-white shadow-lg`}>
                 Sample button
-              </button>
+              </div>
             </div>
             <div className="border-t border-aria-border px-4 py-3 text-[11px] leading-relaxed text-aria-muted">
               <p className="mb-1 flex items-center gap-1 font-semibold text-aria-text"><Sparkles size={12} className="text-aria-brand-2" /> Tips</p>
@@ -105,12 +116,11 @@ export default function EffectMaker() {
               <Share2 size={15} /> {shared ? 'Shared' : 'Save & share'}
             </button>
             <button onClick={save}
-              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
-              <Save size={15} /> Save effect
+              className="a-cta flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition">
+              <Save size={15} aria-hidden /> Save effect
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }

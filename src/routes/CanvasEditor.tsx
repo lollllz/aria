@@ -17,6 +17,8 @@ import Tutorial from '../components/canvas/Tutorial'
 import SitesPanel from '../components/canvas/SitesPanel'
 import SiteDatabase from '../components/canvas/SiteDatabase'
 import { useEffectsStore } from '../store/effectsStore'
+import { isTypingTarget, prefersReducedMotion } from '../lib/a11y'
+import LiveStatus from '../components/LiveStatus'
 
 const palette: { kind: ElementKind; label: string; icon: typeof Type }[] = [
   { kind: 'heading', label: 'Heading', icon: Heading },
@@ -60,6 +62,7 @@ function ElementView({
   const isTextKind = el.kind === 'text' || el.kind === 'heading' || el.kind === 'button'
   const [editing, setEditing] = useState(false)
   const editRef = useRef<HTMLDivElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
 
   // When entering inline edit: seed the box with the current text (React leaves
   // the children alone while editing, so typing never gets reconciled away),
@@ -77,6 +80,18 @@ function ElementView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
+
+  useEffect(() => {
+    if (!selected || preview || !canEdit || !isTextKind) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'F2') return
+      if (isTypingTarget(e.target)) return
+      e.preventDefault()
+      setEditing(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [selected, preview, canEdit, isTextKind])
 
   // Outer wrapper owns position, rotation and selection; it never animates so
   // handles stay put. The inner box owns the visual style + animation class,
@@ -129,17 +144,49 @@ function ElementView({
 
   const content =
     el.kind === 'image' ? (
-      <img src={el.content} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} draggable={false} />
+      <img src={el.content} alt={el.alt || el.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} draggable={false} />
     ) : el.kind === 'svg' ? (
       <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: el.content }} />
     ) : (
       el.content
     )
 
+  const previewRole = preview && hasHook
+    ? (el.action.type === 'url' ? 'link' : 'button')
+    : undefined
+  const editTabIndex = preview ? (hasHook ? 0 : -1) : 0
+
+  const onWidgetKeyDown = (e: React.KeyboardEvent) => {
+    if (editing) return
+    if (preview && hasHook && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      e.stopPropagation()
+      onActivate(el)
+      return
+    }
+    if (preview) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect(el.id)
+      if (e.key === 'Enter' && isTextKind && canEdit && selected) setEditing(true)
+    }
+  }
+
+  const Tag: 'a' | 'div' = preview && hasHook && el.action.type === 'url' && el.action.target ? 'a' : 'div'
+
   return (
-    <div
+    <Tag
       id={`el-${el.id}`}
+      ref={wrapRef as never}
+      href={Tag === 'a' ? el.action.target : undefined}
+      target={Tag === 'a' ? '_blank' : undefined}
+      rel={Tag === 'a' ? 'noopener noreferrer' : undefined}
       style={outer}
+      role={preview ? (Tag === 'a' ? undefined : previewRole) : 'option'}
+      aria-selected={preview ? undefined : selected}
+      aria-label={el.name}
+      tabIndex={editTabIndex}
+      onKeyDown={onWidgetKeyDown}
       onPointerDown={(e) => {
         if (preview || editing) return
         e.stopPropagation()
@@ -200,6 +247,7 @@ function ElementView({
               key={h}
               onPointerDown={(e) => { e.stopPropagation(); onStartResize(e, h, el, geo) }}
               className="aria-handle group/handle"
+              aria-hidden
               style={{ ...pos, width: HIT, height: HIT, cursor, transform: `rotate(${-el.rotation}deg)`, display: 'grid', placeItems: 'center', touchAction: 'none' }}
             >
               <span
@@ -214,7 +262,7 @@ function ElementView({
             </div>
           )
         })}
-    </div>
+    </Tag>
   )
 }
 
@@ -234,6 +282,8 @@ export default function CanvasEditor() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [showSites, setShowSites] = useState(false)
   const [showDb, setShowDb] = useState(false)
+  const [status, setStatus] = useState('')
+  const announce = (msg: string) => setStatus(msg)
   const drag = useRef<DragState>(null)
   const svgInput = useRef<HTMLInputElement>(null)
 
@@ -254,7 +304,7 @@ export default function CanvasEditor() {
     reader.onload = () => {
       const text = String(reader.result || '')
       if (text.includes('<svg')) addSvg(text, file.name.replace(/\.svg$/i, ''))
-      else alert('That file does not look like an SVG.')
+      else announce('That file does not look like an SVG.')
     }
     reader.readAsText(file)
     e.target.value = '' // allow re-uploading the same file
@@ -338,22 +388,38 @@ export default function CanvasEditor() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (isTypingTarget(e.target)) return
       const mod = e.metaKey || e.ctrlKey
-      if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return }
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
+        return
+      }
       if (mod && e.key.toLowerCase() === 'd' && selectedId) { e.preventDefault(); duplicateElement(selectedId); return }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); removeElement(selectedId); return }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+        e.preventDefault()
+        const name = elements.find((x) => x.id === selectedId)?.name ?? 'element'
+        removeElement(selectedId)
+        announce(`Deleted ${name}`)
+        return
+      }
       if (selectedId && geoEditable && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault()
         const el = elements.find((x) => x.id === selectedId)
         if (!el) return
         const g = geoFor(el)
         const step = e.shiftKey ? 10 : 1
-        setGeo(selectedId, {
-          x: g.x + (e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0),
-          y: g.y + (e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0),
-        })
+        if (e.altKey) {
+          const width = Math.max(12, g.width + (e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0))
+          const height = Math.max(12, g.height + (e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0))
+          setGeo(selectedId, { width, height })
+        } else {
+          setGeo(selectedId, {
+            x: g.x + (e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0),
+            y: g.y + (e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0),
+          })
+        }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -375,7 +441,12 @@ export default function CanvasEditor() {
     }
   }
 
-  // Switch which device we're viewing/editing (frame size derives from it).
+  useEffect(() => {
+    if (!selectedId) return
+    const el = elements.find((x) => x.id === selectedId)
+    if (el) announce(`Selected ${el.name}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
   const applyDevice = (d: (typeof DEVICES)[number]) => setDevice(d.id)
 
   // Export the whole design to a downloadable Vite + React project.
@@ -413,53 +484,66 @@ export default function CanvasEditor() {
       if (target.pageId !== currentPageId) setCurrentPage(target.pageId)
       setTimeout(() => {
         const node = document.getElementById(`el-${target.id}`)
-        node?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        node?.animate(
-          [{ boxShadow: '0 0 0 0 rgba(124,92,255,0.9)' }, { boxShadow: '0 0 0 12px rgba(124,92,255,0)' }],
-          { duration: 700 },
-        )
+        const reduce = prefersReducedMotion()
+        node?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+        if (!reduce) {
+          node?.animate(
+            [{ boxShadow: '0 0 0 0 rgba(124,92,255,0.9)' }, { boxShadow: '0 0 0 12px rgba(124,92,255,0)' }],
+            { duration: 700 },
+          )
+        }
       }, 40)
     }
   }
 
   return (
     <div className="flex h-full flex-col bg-aria-bg">
+      <LiveStatus message={status} />
       {/* Top bar */}
       <div className="flex h-12 items-center justify-between border-b border-aria-border px-3">
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-aria-muted hover:bg-aria-panel hover:text-aria-text">
-            <Home size={16} /> Aria
+            <Home size={16} aria-hidden /> Aria
           </Link>
           <span className="h-5 w-px bg-aria-border" />
-          <button onClick={undo} title="Undo (⌘Z)" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><Undo2 size={16} /></button>
-          <button onClick={redo} title="Redo (⌘⇧Z)" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><Redo2 size={16} /></button>
-          <button onClick={() => setShowGrid((g) => !g)} title="Toggle grid" className={`rounded-lg p-2 hover:bg-aria-panel ${showGrid ? 'text-aria-brand-2' : 'text-aria-muted'}`}><Grid3x3 size={16} /></button>
-          <button onClick={() => setShowTutorial(true)} title="Tutorial" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><HelpCircle size={16} /></button>
+          <button type="button" onClick={undo} aria-label="Undo" title="Undo (⌘Z)" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><Undo2 size={16} aria-hidden /></button>
+          <button type="button" onClick={redo} aria-label="Redo" title="Redo (⌘⇧Z)" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><Redo2 size={16} aria-hidden /></button>
+          <button type="button" onClick={() => setShowGrid((g) => !g)} aria-pressed={showGrid} aria-label="Toggle grid" title="Toggle grid" className={`rounded-lg p-2 hover:bg-aria-panel ${showGrid ? 'text-aria-brand-2' : 'text-aria-muted'}`}><Grid3x3 size={16} aria-hidden /></button>
+          <button type="button" onClick={() => setShowTutorial(true)} aria-label="Tutorial" title="Tutorial" className="rounded-lg p-2 text-aria-muted hover:bg-aria-panel hover:text-aria-text"><HelpCircle size={16} aria-hidden /></button>
         </div>
 
         <div className="flex items-center gap-0.5 rounded-lg border border-aria-border bg-aria-panel p-0.5">
+          <div role="radiogroup" aria-label="Device" className="flex items-center gap-0.5">
           {DEVICES.map((d) => (
             <button
               key={d.id}
+              type="button"
+              role="radio"
+              aria-checked={device === d.id}
+              aria-label={d.label}
               onClick={() => applyDevice(d)}
               title={d.label}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition ${
                 device === d.id ? 'bg-aria-panel-2 text-aria-text' : 'text-aria-muted hover:text-aria-text'
               }`}
             >
-              <d.icon size={16} />
+              <d.icon size={16} aria-hidden />
               <span className="hidden sm:inline">{d.label}</span>
             </button>
           ))}
+          </div>
           <span className="mx-0.5 h-4 w-px bg-aria-border" />
           <button
+            type="button"
+            aria-pressed={autoAdaptive}
+            aria-label="Auto-adaptive layout"
             onClick={() => setAutoAdaptive(!autoAdaptive)}
             title="Auto-adaptive: mirror the desktop layout onto smaller screens, scaled to fit"
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition ${
               autoAdaptive ? 'bg-aria-brand/20 text-aria-brand-2' : 'text-aria-muted hover:text-aria-text'
             }`}
           >
-            <Wand2 size={15} />
+            <Wand2 size={15} aria-hidden />
             <span className="hidden sm:inline">Auto</span>
           </button>
         </div>
@@ -467,28 +551,28 @@ export default function CanvasEditor() {
         <div className="flex items-center gap-2">
           {!preview && (
             <>
-              <button onClick={() => setShowSites(true)} title="Save / open your sites" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
-                <Cloud size={15} /> My sites
+              <button type="button" onClick={() => setShowSites(true)} title="Save / open your sites" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
+                <Cloud size={15} aria-hidden /> My sites
               </button>
-              <button onClick={() => setShowLinkMap(true)} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
-                <Link2 size={15} /> Link Map
+              <button type="button" onClick={() => setShowLinkMap(true)} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
+                <Link2 size={15} aria-hidden /> Link Map
               </button>
-              <button onClick={() => setShowDb(true)} title="Database for the site you are building" className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${siteDb.enabled ? 'border-aria-brand/50 bg-aria-brand/10 text-aria-brand-2' : 'border-aria-border text-aria-muted hover:text-aria-text'}`}>
-                <Database size={15} /> Database
+              <button type="button" onClick={() => setShowDb(true)} title="Database for the site you are building" className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${siteDb.enabled ? 'border-aria-brand/50 bg-aria-brand/10 text-aria-brand-2' : 'border-aria-border text-aria-muted hover:text-aria-text'}`}>
+                <Database size={15} aria-hidden /> Database
               </button>
-              <button onClick={loadStarter} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Sparkles size={15} /> Starter</button>
-              <button onClick={exportZip} title="Export a Vite + React project" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Download size={15} /> Export code</button>
-              <button onClick={clear} title="Clear this page" className="rounded-lg p-2 text-aria-muted hover:bg-red-500/10 hover:text-red-400"><Trash2 size={16} /></button>
+              <button type="button" onClick={loadStarter} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Sparkles size={15} aria-hidden /> Starter</button>
+              <button type="button" onClick={exportZip} title="Export a Vite + React project" className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text"><Download size={15} aria-hidden /> Export code</button>
+              <button type="button" onClick={() => { clear(); announce('Page cleared') }} aria-label="Clear this page" title="Clear this page" className="rounded-lg p-2 text-aria-muted hover:bg-red-500/10 hover:text-red-400"><Trash2 size={16} aria-hidden /></button>
             </>
           )}
-          <button onClick={() => { setPreview((p) => !p); select(null) }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${preview ? 'bg-aria-brand-2 text-black' : 'bg-gradient-to-r from-aria-brand to-aria-brand-2 text-white'}`}>
-            <Eye size={15} /> {preview ? 'Editing off' : 'Preview'}
+          <button type="button" onClick={() => { setPreview((p) => !p); select(null) }} className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold ${preview ? 'bg-aria-brand-2 text-black' : 'a-cta'}`}>
+            <Eye size={15} aria-hidden /> {preview ? 'Editing off' : 'Preview'}
           </button>
         </div>
       </div>
 
       {/* Page tabs */}
-      <div className="flex h-10 items-center gap-1 border-b border-aria-border bg-aria-panel px-3">
+      <div role="tablist" aria-label="Pages" className="flex h-10 items-center gap-1 border-b border-aria-border bg-aria-panel px-3">
         {pages.map((p) => (
           <div
             key={p.id}
@@ -497,54 +581,68 @@ export default function CanvasEditor() {
             }`}
           >
             <button
+              type="button"
+              role="tab"
+              aria-selected={p.id === currentPageId}
               onClick={() => setCurrentPage(p.id)}
               onDoubleClick={() => { const n = prompt('Rename page', p.name); if (n) renamePage(p.id, n) }}
+              onKeyDown={(e) => {
+                if (e.key === 'F2') {
+                  e.preventDefault()
+                  const n = prompt('Rename page', p.name)
+                  if (n) renamePage(p.id, n)
+                }
+              }}
               className="font-medium"
             >
               {p.name}
             </button>
             {!preview && pages.length > 1 && p.id === currentPageId && (
-              <button onClick={() => removePage(p.id)} title="Delete page" className="rounded p-0.5 text-aria-muted hover:text-red-400">
-                <X size={12} />
+              <button type="button" onClick={() => removePage(p.id)} aria-label={`Delete page ${p.name}`} title="Delete page" className="rounded p-0.5 text-aria-muted hover:text-red-400">
+                <X size={12} aria-hidden />
               </button>
             )}
           </div>
         ))}
         {!preview && (
           <>
-            <button onClick={addPage} title="Add page" className="ml-1 flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
-              <Plus size={14} /> Page
+            <button type="button" onClick={addPage} aria-label="Add page" title="Add page" className="ml-1 flex items-center gap-1 rounded-lg px-2 py-1 text-sm text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
+              <Plus size={14} aria-hidden /> Page
             </button>
-            <span className="ml-auto text-xs text-aria-muted">Double-click a tab to rename</span>
+            <span className="ml-auto text-xs text-aria-muted">F2 or double-click a tab to rename</span>
           </>
         )}
       </div>
 
       <div className="flex min-h-0 flex-1">
         {!preview && (
-          <aside className="a-fade-in w-16 shrink-0 border-r border-aria-border bg-aria-panel/80 py-3 backdrop-blur">
+          <aside aria-label="Add elements" className="a-fade-in w-16 shrink-0 border-r border-aria-border bg-aria-panel/80 py-3 backdrop-blur">
             <div className="flex flex-col items-center gap-1">
               {palette.map(({ kind, label, icon: Icon }) => (
                 <button
                   key={kind}
+                  type="button"
+                  aria-label={`Add ${label}`}
                   title={`Add ${label}`}
                   onClick={() => addElement(kind)}
                   className="group flex w-14 flex-col items-center gap-1 rounded-xl py-2 text-aria-muted transition-all duration-300 hover:bg-aria-panel-2 hover:text-aria-text active:scale-95"
                 >
-                  <Icon size={18} />
+                  <Icon size={18} aria-hidden />
                   <span className="text-[10px]">{label}</span>
                 </button>
               ))}
               <div className="my-1 h-px w-8 bg-aria-border" />
               <button
+                type="button"
+                aria-label="Upload SVG"
                 title="Upload your own SVG (from Illustrator, Figma…)"
                 onClick={() => svgInput.current?.click()}
                 className="group flex w-14 flex-col items-center gap-1 rounded-xl py-2 text-aria-brand-2 transition-all duration-300 hover:bg-aria-panel-2 active:scale-95"
               >
-                <Upload size={18} />
+                <Upload size={18} aria-hidden />
                 <span className="text-[10px]">SVG</span>
               </button>
-              <input ref={svgInput} type="file" accept=".svg,image/svg+xml" onChange={onSvgFile} className="hidden" />
+              <input ref={svgInput} type="file" accept=".svg,image/svg+xml" onChange={onSvgFile} className="hidden" aria-label="Upload SVG" />
             </div>
           </aside>
         )}
@@ -558,6 +656,9 @@ export default function CanvasEditor() {
               const phone = device === 'mobile'
               const frameEl = (
                 <div
+                  role="listbox"
+                  aria-label="Canvas"
+                  aria-activedescendant={selectedId ? `el-${selectedId}` : undefined}
                   onPointerDown={(e) => e.stopPropagation()}
                   style={{
                     width: frame.width, height: frame.height, background: page.background,
@@ -610,7 +711,7 @@ export default function CanvasEditor() {
         </div>
 
         {!preview && (
-          <aside className="a-slide-in-right w-72 shrink-0 border-l border-aria-border bg-aria-panel/80 backdrop-blur">
+          <aside aria-label="Inspector" className="a-slide-in-right w-72 shrink-0 border-l border-aria-border bg-aria-panel/80 backdrop-blur">
             <Inspector element={selected} />
           </aside>
         )}

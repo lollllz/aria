@@ -33,7 +33,7 @@ function Shell() {
   }, [pathname])
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col overflow-visible">
       <a href="#main-content" className="skip-link">Skip to main content</a>
       {!bareChrome && <Navbar />}
       {/* keyed by route so each page animates in on navigation */}

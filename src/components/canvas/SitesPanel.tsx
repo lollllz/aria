@@ -8,6 +8,7 @@ import { useCanvasStore } from '../../store/canvasStore'
 import { useEffectsStore } from '../../store/effectsStore'
 import { useProfileStore } from '../../store/profileStore'
 import { useSitesStore } from '../../store/sitesStore'
+import Dialog from '../Dialog'
 
 // Collects the whole design out of the stores.
 export function collectSiteData(): SiteData {
@@ -93,14 +94,20 @@ export default function SitesPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="a-fade-in fixed inset-0 z-[65] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="a-pop-in w-full max-w-lg overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
+    <Dialog
+      onClose={onClose}
+      labelledBy="sites-title"
+      zClass="z-[65]"
+      panelClassName="a-pop-in w-full max-w-lg overflow-hidden rounded-2xl border border-aria-border bg-aria-panel"
+    >
         <div className="flex items-center justify-between border-b border-aria-border px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            {online ? <Cloud size={17} className="text-aria-brand-2" /> : <CloudOff size={17} className="text-aria-muted" />}
+          <h2 id="sites-title" className="flex items-center gap-2 text-base font-semibold">
+            {online ? <Cloud size={17} aria-hidden className="text-aria-brand-2" /> : <CloudOff size={17} aria-hidden className="text-aria-muted" />}
             My sites
           </h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={17} /></button>
+          <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
+            <X size={17} aria-hidden />
+          </button>
         </div>
 
         {/* Requirements */}
@@ -121,20 +128,21 @@ export default function SitesPanel({ onClose }: { onClose: () => void }) {
           <>
             {/* Save row */}
             <div className="border-b border-aria-border px-5 py-4">
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-aria-muted">Site name</label>
+              <label htmlFor="site-name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-aria-muted">Site name</label>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input
+                  id="site-name"
                   value={siteName}
                   onChange={(e) => setSiteName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') save(false) }}
                   placeholder="My site"
-                  className="flex-1 rounded-xl border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none transition-colors focus:border-aria-brand"
+                  className="flex-1 rounded-xl border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm transition-colors focus:border-aria-brand"
                 />
                 <button
                   onClick={() => save(false)}
                   disabled={busy === 'save'}
                   className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50 ${
-                    savedFlash ? 'bg-emerald-500' : 'bg-gradient-to-r from-aria-brand to-aria-brand-2 hover:opacity-90'
+                    savedFlash ? 'bg-emerald-500' : 'a-cta'
                   }`}
                 >
                   {busy === 'save' ? <Loader2 size={15} className="animate-spin" /> : savedFlash ? <Check size={15} /> : <Cloud size={15} />}
@@ -199,9 +207,11 @@ export default function SitesPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {err && (
-          <div className="a-pop-in border-t border-red-500/30 bg-red-500/[0.07] px-5 py-3 text-xs text-red-300">{err}</div>
+          <div role="alert" className="a-pop-in border-t border-red-500/30 bg-red-500/[0.07] px-5 py-3 text-xs text-red-300">{err}</div>
         )}
-      </div>
-    </div>
+        {savedFlash && (
+          <div role="status" aria-live="polite" className="sr-only">Saved</div>
+        )}
+    </Dialog>
   )
 }

@@ -147,12 +147,54 @@ button:active:not(:disabled), [role='button']:active { transform: scale(0.97); }
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-/* Focus ring — Google-style, accessible and calm */
-:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+/* Focus ring — beats Tailwind outline-none so fields stay visible on Tab */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
   outline: 2px solid var(--color-aria-brand);
   outline-offset: 2px;
-  border-radius: 8px;
 }
+
+/* Screen-reader-only text; skip link becomes visible on focus */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 100;
+  border-radius: 0.75rem;
+  background: #5b3fd4;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  top: 0.75rem;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Primary CTA — solid brand purple (~6.6:1 on white), not the cyan gradient */
+.a-cta {
+  background-color: #5b3fd4;
+  color: #ffffff;
+}
+.a-cta:hover { opacity: 0.92; }
+.a-cta:disabled { opacity: 0.4; }
 
 /* Scroll reveal (paired with an IntersectionObserver) */
 .a-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease-out-expo), transform .7s var(--ease-out-expo); }
@@ -185,7 +227,13 @@ button:active:not(:disabled), [role='button']:active { transform: scale(0.97); }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+  html { scroll-behavior: auto; }
   .a-reveal { opacity: 1; transform: none; }
+  .aria-anim-pulse, .aria-anim-float, .aria-anim-bounce,
+  .aria-anim-glow, .aria-anim-shake, .aria-anim-shine::after {
+    animation: none !important;
+  }
+  .aria-anim-tilt:hover, .aria-anim-pop:hover { transform: none !important; }
 }
 
 .aria-grid-bg {

@@ -49,8 +49,10 @@ create table if not exists market_items (
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [done, setDone] = useState(false)
+  const name = label || 'Copy'
   return (
     <button
+      aria-label={done ? 'Copied' : name}
       onClick={() => {
         navigator.clipboard?.writeText(text)
         setDone(true)
@@ -60,7 +62,7 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
         done ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400' : 'border-aria-border text-aria-muted hover:text-aria-text'
       }`}
     >
-      {done ? <Check size={13} className="a-pop-in" /> : <Copy size={13} />}
+      {done ? <Check size={13} aria-hidden className="a-pop-in" /> : <Copy size={13} aria-hidden />}
       {done ? 'Copied' : label}
     </button>
   )
@@ -73,7 +75,7 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-aria-brand to-aria-brand-2 text-xs font-bold text-white">
           {n}
         </span>
-        <h3 className="font-semibold">{title}</h3>
+        <h2 className="font-semibold">{title}</h2>
       </div>
       <div className="pl-10 text-sm leading-relaxed text-aria-muted">{children}</div>
     </div>
@@ -114,7 +116,7 @@ export default function Settings() {
       {/* Header + live status */}
       <div className="a-fade-up mb-8">
         <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight">
-          <Database size={24} className="text-aria-brand-2" /> Aria hosting
+          <Database size={24} aria-hidden className="text-aria-brand-2" /> Aria hosting
         </h1>
         <p className="mt-2 text-sm text-aria-muted">
           This is the backend for <span className="text-aria-text">this Aria install</span> — where accounts, saved
@@ -161,13 +163,16 @@ export default function Settings() {
       {/* Provider */}
       <div className="a-fade-up a-d2 mb-6">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-aria-muted">Provider</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div role="radiogroup" aria-label="Database provider" className="grid grid-cols-2 gap-3">
           {([
             { id: 'neon' as const, name: 'Neon', desc: 'Serverless Postgres · recommended', badge: 'Best fit' },
             { id: 'other' as const, name: 'Other Postgres', desc: 'Supabase, RDS, self-hosted…', badge: '' },
           ]).map((p) => (
             <button
               key={p.id}
+              type="button"
+              role="radio"
+              aria-checked={provider === p.id}
               onClick={() => setProvider(p.id)}
               className={`a-press relative rounded-2xl border p-4 text-left transition-all duration-300 ${
                 provider === p.id
@@ -241,7 +246,7 @@ export default function Settings() {
                 <Icon size={14} className="shrink-0 text-aria-brand-2" />
                 <span className="font-mono text-xs text-aria-text">{k}</span>
                 <span className="ml-auto truncate text-xs text-aria-muted">{v}</span>
-                {k === 'ALLOWED_ORIGIN' && <CopyButton text={window.location.origin} label="" />}
+                {k === 'ALLOWED_ORIGIN' && <CopyButton text={window.location.origin} label="Copy origin" />}
               </div>
             ))}
           </div>
@@ -254,29 +259,34 @@ export default function Settings() {
         <Step n={4} title="Connect Aria to your API">
           <p>Paste your deployed API URL, then test it.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <label htmlFor="api-url" className="sr-only">API URL</label>
             <input
+              id="api-url"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') test(true) }}
               placeholder="https://your-api.netlify.app"
-              className="flex-1 rounded-xl border border-aria-border bg-aria-panel-2 px-3 py-2.5 font-mono text-sm outline-none transition-colors focus:border-aria-brand"
+              className="flex-1 rounded-xl border border-aria-border bg-aria-panel-2 px-3 py-2.5 font-mono text-sm transition-colors focus:border-aria-brand"
             />
             <button
               onClick={() => test(true)}
               disabled={testing || !draft.trim()}
-              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
+              className="a-cta flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition"
             >
-              {testing ? <Loader2 size={15} className="animate-spin" /> : <Plug size={15} />}
+              {testing ? <Loader2 size={15} aria-hidden className="animate-spin" /> : <Plug size={15} aria-hidden />}
               {testing ? 'Testing…' : 'Test & save'}
             </button>
           </div>
 
           {report && !testing && (
-            <div className={`a-pop-in mt-3 flex items-start gap-2 rounded-xl border p-3 text-xs ${
+            <div
+              role={report.ok ? 'status' : 'alert'}
+              aria-live={report.ok ? 'polite' : 'assertive'}
+              className={`a-pop-in mt-3 flex items-start gap-2 rounded-xl border p-3 text-xs ${
               report.ok ? 'border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-300'
                 : 'border-red-500/40 bg-red-500/[0.07] text-red-300'
             }`}>
-              {report.ok ? <Check size={14} className="mt-0.5 shrink-0" /> : <X size={14} className="mt-0.5 shrink-0" />}
+              {report.ok ? <Check size={14} aria-hidden className="mt-0.5 shrink-0" /> : <X size={14} aria-hidden className="mt-0.5 shrink-0" />}
               <span>
                 {report.ok
                   ? 'Connected. Your database is ready to use.'

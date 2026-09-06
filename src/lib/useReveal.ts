@@ -7,8 +7,12 @@ export function useReveal(deps: unknown[] = []) {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>('.a-reveal:not(.is-in)'))
     if (!nodes.length) return
 
-    // If IntersectionObserver is unavailable, just show everything.
-    if (typeof IntersectionObserver === 'undefined') {
+    // If IntersectionObserver is unavailable, or the user prefers reduced
+    // motion, just show everything immediately.
+    if (
+      typeof IntersectionObserver === 'undefined'
+      || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
       nodes.forEach((n) => n.classList.add('is-in'))
       return
     }

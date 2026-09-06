@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { X, MousePointerClick, FileText, Link2, Unlink, Info } from 'lucide-react'
 import { useCanvasStore } from '../../store/canvasStore'
 import type { CanvasElement } from '../../types'
+import Dialog from '../Dialog'
 
 // ── Layout constants for the node graph ─────────────────────────────────────
 const CARD_W = 240
@@ -93,17 +94,23 @@ export default function LinkMap({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="a-fade-in fixed inset-0 z-50 flex flex-col bg-aria-bg/95 backdrop-blur-sm">
-      {/* Header */}
+    <Dialog
+      onClose={onClose}
+      labelledBy="linkmap-title"
+      fullscreen
+      zClass="z-50"
+      panelClassName="flex h-full flex-col"
+    >
       <div className="flex h-12 items-center justify-between border-b border-aria-border px-4">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <Link2 size={16} className="text-aria-brand-2" /> Link Map
+          <Link2 size={16} aria-hidden className="text-aria-brand-2" />
+          <h2 id="linkmap-title" className="text-sm font-semibold">Link Map</h2>
           <span className="ml-2 hidden items-center gap-1 text-xs font-normal text-aria-muted sm:flex">
-            <Info size={13} /> Click a button, then click a page or element to wire the hook.
+            <Info size={13} aria-hidden /> Activate a button, then a page or element to wire the hook.
           </span>
         </div>
         <button onClick={onClose} className="flex items-center gap-1.5 rounded-lg border border-aria-border px-3 py-1.5 text-sm text-aria-muted hover:text-aria-text">
-          <X size={15} /> Close
+          <X size={15} aria-hidden /> Close
         </button>
       </div>
 
@@ -111,7 +118,7 @@ export default function LinkMap({ onClose }: { onClose: () => void }) {
       <div className="min-h-0 flex-1 overflow-auto aria-grid-bg p-2">
         <div className="relative" style={{ width: layout.width, height: layout.maxH }}>
           {/* Edges */}
-          <svg className="pointer-events-none absolute inset-0" width={layout.width} height={layout.maxH}>
+          <svg aria-hidden className="pointer-events-none absolute inset-0" width={layout.width} height={layout.maxH}>
             <defs>
               <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
                 <path d="M0,0 L8,3 L0,6 Z" fill="#7c5cff" />
@@ -144,6 +151,7 @@ export default function LinkMap({ onClose }: { onClose: () => void }) {
                 className={`flex w-full items-center gap-2 rounded-t-xl border-b border-aria-border px-3 text-left text-sm font-semibold transition ${
                   linkingFrom ? 'cursor-crosshair bg-aria-brand/15 hover:bg-aria-brand/30' : 'bg-aria-panel-2'
                 }`}
+                aria-label={linkingFrom ? `Link to page ${c.page.name}` : c.page.name}
               >
                 <FileText size={15} className="text-aria-brand-2" />
                 <span className="truncate">{c.page.name}</span>
@@ -162,53 +170,67 @@ export default function LinkMap({ onClose }: { onClose: () => void }) {
                   // What clicking the row does depends on mode:
                   //  - idle + interactive button → start a link from it
                   //  - linking + any other element → complete an element link
-                  const clickable = interactive || linkingFrom
+                  const clickable = interactive || Boolean(linkingFrom)
                   const onRowClick = () => {
                     if (linking) { setLinkingFrom(null); return }
                     if (linkingFrom) completeToElement(el.id)
                     else if (interactive) startLink(el.id)
                   }
+                  const hint = interactive && !linkingFrom
+                    ? 'Start a link from this button'
+                    : linkingFrom
+                      ? 'Link to this element'
+                      : undefined
                   return (
                     <div
                       key={el.id}
                       style={{ height: ROW_H }}
-                      onClick={onRowClick}
-                      title={interactive && !linkingFrom ? 'Click to start a link from this button' : linkingFrom ? 'Click to link to this element' : undefined}
-                      className={`group flex items-center gap-2 px-3 text-xs transition ${
-                        linking ? 'bg-aria-brand/30' : linkingFrom ? 'cursor-crosshair hover:bg-aria-panel-2' : interactive ? 'cursor-pointer hover:bg-aria-panel-2' : ''
-                      } ${clickable ? '' : 'cursor-default'}`}
+                      className={`group flex items-center gap-2 px-3 text-xs ${
+                        linking ? 'bg-aria-brand/30' : ''
+                      }`}
                     >
-                      {interactive ? (
-                        <MousePointerClick size={13} className="shrink-0 text-aria-brand" />
-                      ) : (
-                        <span className="h-2 w-2 shrink-0 rounded-sm bg-aria-border" />
-                      )}
-                      <span className={`truncate ${interactive ? 'text-aria-text' : 'text-aria-muted'}`}>
-                        {el.name}
-                      </span>
-
-                      {label && (
-                        <span className="ml-auto flex items-center gap-1 rounded bg-aria-brand/15 px-1.5 py-0.5 text-[10px] text-aria-brand-2">
-                          → {label}
-                        </span>
-                      )}
-
-                      {/* Always-visible link controls for buttons */}
-                      {interactive && (
-                        <div className={`flex items-center gap-1 ${label ? '' : 'ml-auto'}`}>
-                          <span
-                            title={linking ? 'Linking… click a target' : 'Start a link'}
-                            className={`rounded p-1 transition ${linking ? 'bg-aria-brand text-white' : 'text-aria-muted group-hover:text-aria-text'}`}
-                          >
-                            <Link2 size={12} />
+                      {clickable ? (
+                        <button
+                          type="button"
+                          onClick={onRowClick}
+                          aria-pressed={linking}
+                          aria-label={`${el.name}${label ? `, linked to ${label}` : ''}. ${hint ?? ''}`}
+                          title={hint}
+                          className={`flex min-w-0 flex-1 items-center gap-2 rounded-md text-left ${
+                            linkingFrom ? 'cursor-crosshair hover:bg-aria-panel-2' : interactive ? 'hover:bg-aria-panel-2' : ''
+                          }`}
+                        >
+                          {interactive ? (
+                            <MousePointerClick size={13} aria-hidden className="shrink-0 text-aria-brand" />
+                          ) : (
+                            <span aria-hidden className="h-2 w-2 shrink-0 rounded-sm bg-aria-border" />
+                          )}
+                          <span className={`truncate ${interactive ? 'text-aria-text' : 'text-aria-muted'}`}>
+                            {el.name}
                           </span>
+                          {label && (
+                            <span className="ml-auto flex items-center gap-1 rounded bg-aria-brand/15 px-1.5 py-0.5 text-[10px] text-aria-brand-2">
+                              → {label}
+                            </span>
+                          )}
+                        </button>
+                      ) : (
+                        <>
+                          <span aria-hidden className="h-2 w-2 shrink-0 rounded-sm bg-aria-border" />
+                          <span className="truncate text-aria-muted">{el.name}</span>
+                        </>
+                      )}
+
+                      {interactive && (
+                        <div className={`flex items-center gap-1 ${label && !clickable ? 'ml-auto' : ''}`}>
                           {el.action.type !== 'none' && (
                             <button
                               onClick={(ev) => { ev.stopPropagation(); setAction(el.id, { type: 'none', target: '' }) }}
+                              aria-label={`Unlink ${el.name}`}
                               title="Unlink"
                               className="rounded p-1 text-aria-muted hover:text-red-400"
                             >
-                              <Unlink size={12} />
+                              <Unlink size={12} aria-hidden />
                             </button>
                           )}
                         </div>
@@ -224,10 +246,10 @@ export default function LinkMap({ onClose }: { onClose: () => void }) {
 
       {/* Footer hint while linking */}
       {linkingFrom && (
-        <div className="border-t border-aria-border bg-aria-panel px-4 py-2 text-center text-xs text-aria-brand-2">
-          Linking from “{elements.find((e) => e.id === linkingFrom)?.name}” — click a page header or an element to connect, or click the link icon again to cancel.
+        <div role="status" aria-live="polite" className="border-t border-aria-border bg-aria-panel px-4 py-2 text-center text-xs text-aria-brand-2">
+          Linking from “{elements.find((e) => e.id === linkingFrom)?.name}” — activate a page header or an element to connect, or activate the same button again to cancel.
         </div>
       )}
-    </div>
+    </Dialog>
   )
 }

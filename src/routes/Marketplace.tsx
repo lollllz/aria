@@ -9,15 +9,16 @@ import { useProfileStore } from '../store/profileStore'
 import { api } from '../lib/api'
 import { cloudEnabled, rowToMarketItem, marketItemToBody } from '../lib/cloud'
 import type { MarketCategory, MarketItem } from '../types'
+import Dialog from '../components/Dialog'
 
 const cats: (MarketCategory | 'all')[] = ['all', 'business', 'portfolio', 'landing', 'restaurant', 'blog', 'theme']
 const kinds = ['all', 'template', 'theme', 'creation', 'effect'] as const
 
 function Stars({ n }: { n: number }) {
   return (
-    <span className="flex items-center gap-0.5 text-amber-400">
-      <Star size={13} fill="currentColor" />
-      <span className="text-xs font-semibold text-aria-text">{n.toFixed(1)}</span>
+    <span className="flex items-center gap-0.5 text-amber-400" aria-label={`${n.toFixed(1)} out of 5 stars`}>
+      <Star size={13} fill="currentColor" aria-hidden />
+      <span className="text-xs font-semibold text-aria-text" aria-hidden>{n.toFixed(1)}</span>
     </span>
   )
 }
@@ -31,7 +32,7 @@ function Card({ item, owned, onGet, onOpen, onDetail }: {
 }) {
   return (
     <div className="a-lift group flex flex-col overflow-hidden rounded-2xl border border-aria-border bg-aria-panel/70 backdrop-blur hover:border-aria-brand/50">
-      <button onClick={onDetail} className="relative block h-36 text-left" style={{ background: item.cover }}>
+      <button onClick={onDetail} aria-label={`${item.title} details`} className="relative block h-36 text-left" style={{ background: item.cover }}>
         <span className="absolute left-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">
           {item.kind}
         </span>
@@ -47,7 +48,7 @@ function Card({ item, owned, onGet, onOpen, onDetail }: {
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <button onClick={onDetail} className="min-w-0 text-left">
-            <h3 className="truncate font-semibold hover:text-aria-brand-2">{item.title}</h3>
+            <h2 className="truncate font-semibold hover:text-aria-brand-2">{item.title}</h2>
             <p className="text-xs text-aria-muted">by {item.author}</p>
           </button>
           <Stars n={item.rating} />
@@ -60,13 +61,15 @@ function Card({ item, owned, onGet, onOpen, onDetail }: {
           ))}
         </div>
         <div className="mt-4 flex items-center justify-between">
-          <span className="flex items-center gap-1 text-xs text-aria-muted"><Download size={13} /> {item.downloads.toLocaleString()}</span>
+          <span className="flex items-center gap-1 text-xs text-aria-muted" aria-label={`${item.downloads.toLocaleString()} downloads`}>
+            <Download size={13} aria-hidden /> {item.downloads.toLocaleString()}
+          </span>
           {item.kind === 'effect' ? (
             owned ? (
               <span className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400"><Check size={13} /> Installed</span>
             ) : (
-              <button onClick={onGet} className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:opacity-90">
-                <Wand2 size={13} /> Add effect
+              <button onClick={onGet} className="a-cta flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition">
+                <Wand2 size={13} aria-hidden /> Add effect
               </button>
             )
           ) : owned ? (
@@ -74,7 +77,7 @@ function Card({ item, owned, onGet, onOpen, onDetail }: {
               <MousePointer2 size={13} /> Open in Canvas
             </button>
           ) : (
-            <button onClick={onGet} className="rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:opacity-90">
+            <button onClick={onGet} className="a-cta rounded-lg px-3.5 py-1.5 text-xs font-semibold transition">
               Get free
             </button>
           )}
@@ -92,57 +95,67 @@ function DetailModal({ item, owned, onClose, onGet, onOpen }: {
   onOpen: () => void
 }) {
   return (
-    <div className="a-fade-in fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="a-pop-in w-full max-w-xl overflow-hidden rounded-2xl border border-aria-border bg-aria-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="relative h-44" style={{ background: item.cover }}>
-          <button onClick={onClose} className="absolute right-3 top-3 rounded-lg bg-black/40 p-1.5 text-white backdrop-blur hover:bg-black/60"><X size={16} /></button>
-          <span className="absolute left-4 top-4 rounded-full bg-black/40 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">{item.kind}</span>
+    <Dialog
+      onClose={onClose}
+      labelledBy="market-detail-title"
+      panelClassName="a-pop-in w-full max-w-xl overflow-hidden rounded-2xl border border-aria-border bg-aria-panel"
+    >
+      <div className="relative h-44" style={{ background: item.cover }}>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-3 top-3 rounded-lg bg-black/40 p-1.5 text-white backdrop-blur hover:bg-black/60"
+        >
+          <X size={16} aria-hidden />
+        </button>
+        <span className="absolute left-4 top-4 rounded-full bg-black/40 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur">{item.kind}</span>
+      </div>
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 id="market-detail-title" className="text-xl font-bold">{item.title}</h2>
+            <p className="text-sm text-aria-muted">by {item.author}</p>
+          </div>
+          <Stars n={item.rating} />
         </div>
-        <div className="p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold">{item.title}</h2>
-              <p className="text-sm text-aria-muted">by {item.author}</p>
-            </div>
-            <Stars n={item.rating} />
-          </div>
-          <p className="mt-3 text-sm leading-relaxed text-aria-muted">{item.description}</p>
-          <div className="mt-4 flex flex-wrap items-center gap-1.5">
-            <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">{item.license} · Free</span>
-            {item.tags.map((t) => <span key={t} className="rounded-md bg-aria-panel-2 px-2 py-0.5 text-[11px] text-aria-muted">#{t}</span>)}
-            <span className="ml-auto flex items-center gap-1 text-xs text-aria-muted"><Download size={13} /> {item.downloads.toLocaleString()}</span>
-          </div>
-          <div className="mt-6 flex gap-2">
-            {item.kind === 'effect' ? (
-              owned ? (
-                <span className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-3 text-sm font-semibold text-emerald-400">
-                  <Check size={16} /> Installed — in the animation picker
-                </span>
-              ) : (
-                <button onClick={onGet} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 py-3 text-sm font-semibold text-white transition hover:opacity-90">
-                  <Wand2 size={16} /> Add effect
-                </button>
-              )
+        <p className="mt-3 text-sm leading-relaxed text-aria-muted">{item.description}</p>
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">{item.license} · Free</span>
+          {item.tags.map((t) => <span key={t} className="rounded-md bg-aria-panel-2 px-2 py-0.5 text-[11px] text-aria-muted">#{t}</span>)}
+          <span className="ml-auto flex items-center gap-1 text-xs text-aria-muted" aria-label={`${item.downloads.toLocaleString()} downloads`}>
+            <Download size={13} aria-hidden /> {item.downloads.toLocaleString()}
+          </span>
+        </div>
+        <div className="mt-6 flex gap-2">
+          {item.kind === 'effect' ? (
+            owned ? (
+              <span className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 py-3 text-sm font-semibold text-emerald-400">
+                <Check size={16} aria-hidden /> Installed — in the animation picker
+              </span>
             ) : (
-              <>
-                <button onClick={onOpen} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 py-3 text-sm font-semibold text-white transition hover:opacity-90">
-                  <MousePointer2 size={16} /> Open in Canvas
+              <button onClick={onGet} className="a-cta flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition">
+                <Wand2 size={16} aria-hidden /> Add effect
+              </button>
+            )
+          ) : (
+            <>
+              <button onClick={onOpen} className="a-cta flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition">
+                <MousePointer2 size={16} aria-hidden /> Open in Canvas
+              </button>
+              {!owned ? (
+                <button onClick={onGet} className="rounded-xl border border-aria-border px-5 py-3 text-sm font-semibold text-aria-text transition hover:bg-aria-panel-2">
+                  Get free
                 </button>
-                {!owned ? (
-                  <button onClick={onGet} className="rounded-xl border border-aria-border px-5 py-3 text-sm font-semibold text-aria-text transition hover:bg-aria-panel-2">
-                    Get free
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-400">
-                    <Check size={16} /> In library
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+              ) : (
+                <span className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-400">
+                  <Check size={16} aria-hidden /> In library
+                </span>
+              )}
+            </>
+          )}
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }
 
@@ -182,59 +195,85 @@ function UploadModal({ onClose, onPublish }: { onClose: () => void; onPublish: (
   }
 
   return (
-    <div className="a-fade-in fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="a-pop-in w-full max-w-lg rounded-2xl border border-aria-border bg-aria-panel p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-bold"><Upload size={18} /> Publish to marketplace</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text"><X size={18} /></button>
-        </div>
+    <Dialog
+      onClose={onClose}
+      labelledBy="upload-title"
+      panelClassName="a-pop-in w-full max-w-lg rounded-2xl border border-aria-border bg-aria-panel p-6"
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <h2 id="upload-title" className="flex items-center gap-2 text-lg font-bold"><Upload size={18} aria-hidden /> Publish to marketplace</h2>
+        <button onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-aria-muted hover:bg-aria-panel-2 hover:text-aria-text">
+          <X size={18} aria-hidden />
+        </button>
+      </div>
 
-        <div className="space-y-3">
-          <input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none focus:border-aria-brand" />
+      <div className="space-y-3">
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-aria-muted">Title</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)}
+            className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm focus:border-aria-brand" />
+        </label>
 
-          <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-aria-muted">Category</span>
             <select value={category} onChange={(e) => setCategory(e.target.value as MarketCategory)}
-              className="rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none focus:border-aria-brand">
+              className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm focus:border-aria-brand">
               {(cats.filter((c) => c !== 'all') as MarketCategory[]).map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-aria-muted">License</span>
             <select value={license} onChange={(e) => setLicense(e.target.value as MarketItem['license'])}
-              className="rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none focus:border-aria-brand">
+              className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm focus:border-aria-brand">
               {licenses.map((l) => <option key={l} value={l}>{l} license</option>)}
             </select>
-          </div>
+          </label>
+        </div>
 
-          <input placeholder="Tags (comma separated)" value={tags} onChange={(e) => setTags(e.target.value)}
-            className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none focus:border-aria-brand" />
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-aria-muted">Tags (comma separated)</span>
+          <input value={tags} onChange={(e) => setTags(e.target.value)}
+            className="w-full rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm focus:border-aria-brand" />
+        </label>
 
-          <textarea placeholder="Short description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-            className="w-full resize-none rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm outline-none focus:border-aria-brand" />
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-aria-muted">Short description</span>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+            className="w-full resize-none rounded-lg border border-aria-border bg-aria-panel-2 px-3 py-2 text-sm focus:border-aria-brand" />
+        </label>
 
-          <div>
-            <p className="mb-1.5 text-xs font-medium text-aria-muted">Cover</p>
-            <div className="flex gap-2">
-              {covers.map((c) => (
-                <button key={c} onClick={() => setCover(c)}
-                  className={`h-10 flex-1 rounded-lg border-2 transition ${cover === c ? 'border-white' : 'border-transparent'}`}
-                  style={{ background: c }} />
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 rounded-lg border border-dashed border-aria-border bg-aria-panel-2/50 px-3 py-4 text-sm text-aria-muted">
-            <Upload size={18} /> Drop your CSS / project files here (demo — no real upload)
+        <div>
+          <p id="cover-label" className="mb-1.5 text-xs font-medium text-aria-muted">Cover</p>
+          <div role="radiogroup" aria-labelledby="cover-label" className="flex gap-2">
+            {covers.map((c, i) => (
+              <button
+                key={c}
+                type="button"
+                role="radio"
+                aria-checked={cover === c}
+                aria-label={`Cover style ${i + 1}`}
+                onClick={() => setCover(c)}
+                className={`h-10 flex-1 rounded-lg border-2 transition ${cover === c ? 'border-white' : 'border-transparent'}`}
+                style={{ background: c }}
+              />
+            ))}
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-aria-muted hover:text-aria-text">Cancel</button>
-          <button onClick={publish} disabled={!title.trim()}
-            className="rounded-lg bg-gradient-to-r from-aria-brand to-aria-brand-2 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40">
-            Publish
-          </button>
+        <div className="flex items-center gap-3 rounded-lg border border-dashed border-aria-border bg-aria-panel-2/50 px-3 py-4 text-sm text-aria-muted">
+          <Upload size={18} aria-hidden /> Drop your CSS / project files here (demo — no real upload)
         </div>
       </div>
-    </div>
+
+      <div className="mt-5 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-aria-muted hover:text-aria-text">Cancel</button>
+        <button onClick={publish} disabled={!title.trim()}
+          className="a-cta rounded-lg px-4 py-2 text-sm font-semibold transition">
+          Publish
+        </button>
+      </div>
+    </Dialog>
   )
 }
 
@@ -360,21 +399,27 @@ export default function Marketplace() {
           </p>
         </div>
         <button onClick={() => setUploadOpen(true)}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-aria-brand/20 transition hover:opacity-90">
-          <Plus size={16} /> Upload creation
+          className="a-cta flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-lg shadow-aria-brand/20 transition">
+          <Plus size={16} aria-hidden /> Upload creation
         </button>
       </div>
 
       {/* Controls */}
       <div className="a-fade-up a-d1 mb-6 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 rounded-lg border border-aria-border bg-aria-panel px-3 py-2">
-          <Search size={16} className="text-aria-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search themes, creations, authors…"
-            className="w-56 bg-transparent text-sm outline-none placeholder:text-aria-muted" />
+          <Search size={16} className="text-aria-muted" aria-hidden />
+          <label htmlFor="market-search" className="sr-only">Search marketplace</label>
+          <input
+            id="market-search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search themes, creations, authors…"
+            className="w-56 bg-transparent text-sm placeholder:text-aria-muted"
+          />
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label="Category" className="flex flex-wrap gap-1.5">
           {cats.map((c) => (
-            <button key={c} onClick={() => setCat(c)}
+            <button key={c} onClick={() => setCat(c)} aria-pressed={cat === c}
               className={`rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition ${
                 cat === c ? 'border-aria-brand bg-aria-brand/15 text-aria-text' : 'border-aria-border text-aria-muted hover:text-aria-text'
               }`}>
@@ -382,9 +427,9 @@ export default function Marketplace() {
             </button>
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-1 rounded-lg border border-aria-border bg-aria-panel p-0.5">
+        <div role="group" aria-label="Kind" className="ml-auto flex items-center gap-1 rounded-lg border border-aria-border bg-aria-panel p-0.5">
           {kinds.map((k) => (
-            <button key={k} onClick={() => setKind(k)}
+            <button key={k} onClick={() => setKind(k)} aria-pressed={kind === k}
               className={`rounded-md px-3 py-1 text-xs font-medium capitalize transition ${
                 kind === k ? 'bg-aria-panel-2 text-aria-text' : 'text-aria-muted hover:text-aria-text'
               }`}>
@@ -433,8 +478,13 @@ export default function Marketplace() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-aria-border bg-aria-panel-2 px-4 py-2.5 text-sm font-medium text-aria-text shadow-2xl">
-          <span className="flex items-center gap-2"><Check size={15} className="text-emerald-400" /> {toast}</span>
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl border border-aria-border bg-aria-panel-2 px-4 py-2.5 text-sm font-medium text-aria-text shadow-2xl"
+        >
+          <span className="flex items-center gap-2"><Check size={15} aria-hidden className="text-emerald-400" /> {toast}</span>
         </div>
       )}
     </div>

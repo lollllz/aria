@@ -133,6 +133,8 @@ export interface CanvasElement {
   style: ElementStyle
   locked?: boolean
   name: string
+  /** Accessible description for image elements; falls back to `name` when empty. */
+  alt?: string
   tablet?: DeviceGeo // per-device overrides
   mobile?: DeviceGeo
 }

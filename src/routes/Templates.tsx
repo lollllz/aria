@@ -40,7 +40,7 @@ function TemplatePreview({ tpl, settings }: { tpl: SiteTemplate; settings: SiteS
   const align = st.heroLayout === 'centered' ? 'center' : 'left'
 
   return (
-    <div className="overflow-hidden rounded-xl border border-aria-border shadow-2xl" style={{ background: bg, color: text, fontFamily: bodyFont }}>
+    <div aria-hidden="true" className="overflow-hidden rounded-xl border border-aria-border shadow-2xl" style={{ background: bg, color: text, fontFamily: bodyFont }}>
       {/* Nav */}
       <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${surface}` }}>
         <span className="text-lg font-black" style={{ color: accent, fontFamily: headingFont, ...uppercase }}>
@@ -54,11 +54,11 @@ function TemplatePreview({ tpl, settings }: { tpl: SiteTemplate; settings: SiteS
       {/* Hero */}
       <div className={`grid gap-6 px-8 py-12 ${split ? 'grid-cols-[1.2fr_1fr] items-center' : 'grid-cols-1'}`} style={{ textAlign: split ? 'left' : align }}>
         <div className={split ? '' : align === 'center' ? 'mx-auto max-w-md' : 'max-w-lg'}>
-          <h2 className="text-3xl font-black leading-tight sm:text-4xl" style={{ fontFamily: headingFont, ...uppercase }}>
+          <p className="text-3xl font-black leading-tight sm:text-4xl" style={{ fontFamily: headingFont, ...uppercase }}>
             {settings.tagline || 'A tagline that sells your idea.'}
-          </h2>
+          </p>
           <p className="mt-3 text-sm" style={{ color: muted }}>{tpl.blurb}</p>
-          <button className="mt-6 px-5 py-2.5 text-sm font-semibold" style={buttonStyle}>Get started</button>
+          <span className="mt-6 inline-block px-5 py-2.5 text-sm font-semibold" style={buttonStyle}>Get started</span>
         </div>
         {split && (
           <div className="aspect-[4/3] w-full rounded-xl" style={{ background: `linear-gradient(135deg, ${accent}, ${st.accent2})`, borderRadius: st.radius }} />
@@ -148,6 +148,7 @@ export default function Templates() {
           <button
             key={c}
             onClick={() => setCat(c)}
+            aria-pressed={cat === c}
             className={`a-press rounded-full border px-4 py-1.5 text-sm font-medium capitalize transition-all duration-300 ${
               cat === c ? 'border-aria-brand bg-aria-brand/15 text-aria-text shadow-[0_0_0_3px] shadow-aria-brand/10' : 'border-aria-border text-aria-muted hover:border-aria-brand/40 hover:text-aria-text'
             }`}
@@ -164,6 +165,7 @@ export default function Templates() {
             <button
               key={t.id}
               onClick={() => pick(t)}
+              aria-pressed={t.id === activeId}
               className={`a-press flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all duration-300 ${
                 t.id === activeId ? 'border-aria-brand bg-aria-panel shadow-[0_0_0_3px] shadow-aria-brand/10' : 'border-aria-border hover:border-aria-brand/40 hover:bg-aria-panel'
               }`}
@@ -174,7 +176,7 @@ export default function Templates() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2 font-semibold">{t.name}
-                  {t.id === activeId && <Check size={14} className="text-aria-brand" />}
+                  {t.id === activeId && <Check size={14} aria-hidden className="text-aria-brand" />}
                 </span>
                 <span className="block truncate text-xs text-aria-muted">{t.style.vibe}</span>
               </span>
@@ -187,53 +189,61 @@ export default function Templates() {
           <TemplatePreview tpl={active} settings={settings} />
           <button
             onClick={useTemplate}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-aria-brand to-aria-brand-2 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+            className="a-cta mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition"
           >
-            Use “{active.name}” &amp; open in Canvas <ArrowRight size={16} />
+            Use “{active.name}” &amp; open in Canvas <ArrowRight size={16} aria-hidden />
           </button>
         </div>
 
         {/* Settings panel */}
         <div className="rounded-xl border border-aria-border bg-aria-panel p-4">
-          <div className="mb-4 flex items-center gap-2 text-sm font-semibold"><Settings2 size={16} /> Settings</div>
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold"><Settings2 size={16} aria-hidden /> Settings</h2>
 
           <label className="mb-3 block">
             <span className="mb-1 block text-xs font-medium text-aria-muted">Site name</span>
             <input value={settings.siteName} onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
-              className="w-full rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm outline-none focus:border-aria-brand" />
+              className="w-full rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand" />
           </label>
 
           <label className="mb-3 block">
             <span className="mb-1 block text-xs font-medium text-aria-muted">Tagline</span>
             <textarea value={settings.tagline} onChange={(e) => setSettings({ ...settings, tagline: e.target.value })} rows={2}
-              className="w-full resize-none rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm outline-none focus:border-aria-brand" />
+              className="w-full resize-none rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand" />
           </label>
 
           <label className="mb-3 block">
             <span className="mb-1 block text-xs font-medium text-aria-muted">Accent color</span>
             <div className="flex items-center gap-2">
               <input type="color" value={settings.accent} onChange={(e) => setSettings({ ...settings, accent: e.target.value })}
+                aria-label="Accent color"
                 className="h-8 w-8 cursor-pointer rounded-md border border-aria-border bg-transparent" />
               <input value={settings.accent} onChange={(e) => setSettings({ ...settings, accent: e.target.value })}
-                className="flex-1 rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm outline-none focus:border-aria-brand" />
+                aria-label="Accent color hex"
+                className="flex-1 rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand" />
             </div>
           </label>
 
           <label className="mb-3 block">
             <span className="mb-1 block text-xs font-medium text-aria-muted">Font</span>
             <select value={settings.font} onChange={(e) => setSettings({ ...settings, font: e.target.value as SiteSettings['font'] })}
-              className="w-full rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm outline-none focus:border-aria-brand">
+              className="w-full rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand">
               {fonts.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </label>
 
-          <label className="flex items-center justify-between py-1">
-            <span className="text-xs font-medium text-aria-muted">Force dark mode</span>
-            <button onClick={() => setSettings({ ...settings, darkMode: !settings.darkMode })}
-              className={`h-6 w-11 rounded-full p-0.5 transition ${settings.darkMode ? 'bg-aria-brand' : 'bg-aria-panel-2'}`}>
+          <div className="flex items-center justify-between py-1">
+            <span id="dark-mode-label" className="text-xs font-medium text-aria-muted">Force dark mode</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.darkMode}
+              aria-labelledby="dark-mode-label"
+              onClick={() => setSettings({ ...settings, darkMode: !settings.darkMode })}
+              className={`h-6 w-11 rounded-full p-0.5 transition ${settings.darkMode ? 'bg-aria-brand' : 'bg-aria-panel-2'}`}
+            >
               <span className={`block h-5 w-5 rounded-full bg-white transition ${settings.darkMode ? 'translate-x-5' : ''}`} />
             </button>
-          </label>
+          </div>
         </div>
       </div>
     </div>

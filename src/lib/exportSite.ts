@@ -184,7 +184,8 @@ const ANIM_CSS = `@keyframes aria-pulse{0%,100%{transform:scale(1)}50%{transform
 .aria-anim-pop:hover{transform:scale(calc(1 + 0.08 * var(--aria-anim-amt,1)))}
 .aria-anim-shine{position:relative}
 .aria-anim-shine::after{content:'';position:absolute;top:0;left:-160%;width:70%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);animation:aria-shine var(--aria-anim-dur,2.2s) ease-in-out infinite;pointer-events:none}
-.aria-svg>svg{width:100%;height:100%;display:block}`
+.aria-svg>svg{width:100%;height:100%;display:block}
+@media (prefers-reduced-motion:reduce){.aria-anim-pulse,.aria-anim-float,.aria-anim-bounce,.aria-anim-glow,.aria-anim-shake,.aria-anim-shine::after{animation:none!important}.aria-anim-tilt:hover,.aria-anim-pop:hover{transform:none!important}}`
 
 const RESET_CSS = `*{box-sizing:border-box}html,body,#root{margin:0;height:100%}
 body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}`
@@ -256,20 +257,39 @@ function Element({ el, geo, onNavigate }) {
     : s.animation.indexOf('fx:') === 0 ? 'aria-fx-' + s.animation.slice(3) : 'aria-anim-' + s.animation
   const cls = (animClass + ' ' + (el.kind === 'svg' ? 'aria-svg' : '')).trim()
 
-  const onClick = () => {
+  const onActivate = () => {
     const a = el.action
     if (!a || a.type === 'none') return
-    if (a.type === 'url' && a.target) window.open(a.target, '_blank')
+    if (a.type === 'url' && a.target) window.open(a.target, '_blank', 'noopener')
     else if (a.type === 'page') onNavigate(a.target)
-    else if (a.type === 'element') { const n = document.getElementById('el-' + a.target); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+    else if (a.type === 'element') {
+      const n = document.getElementById('el-' + a.target)
+      if (n) {
+        const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        n.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+      }
+    }
+  }
+  const hooked = el.action && el.action.type !== 'none'
+  const onKeyDown = (e) => {
+    if (!hooked) return
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onActivate() }
   }
 
   let content = el.content
-  if (el.kind === 'image') content = <img src={el.content} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+  if (el.kind === 'image') content = <img src={el.content} alt={el.alt || el.name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
   else if (el.kind === 'svg') content = <div style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: el.content }} />
 
+  if (el.action && el.action.type === 'url' && el.action.target) {
+    return (
+      <a id={'el-' + el.id} href={el.action.target} target="_blank" rel="noopener noreferrer" style={outer} onClick={(e) => { e.preventDefault(); onActivate() }}>
+        <div style={inner} className={cls || undefined}>{content}</div>
+      </a>
+    )
+  }
+
   return (
-    <div id={'el-' + el.id} style={outer} onClick={onClick}>
+    <div id={'el-' + el.id} style={outer} onClick={hooked ? onActivate : undefined} role={hooked ? 'button' : undefined} tabIndex={hooked ? 0 : undefined} onKeyDown={onKeyDown}>
       <div style={inner} className={cls || undefined}>{content}</div>
     </div>
   )

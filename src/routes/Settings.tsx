@@ -108,7 +108,7 @@ export default function Settings() {
   const ready = report?.ok
 
   return (
-    <div className="relative mx-auto max-w-3xl px-6 py-10">
+    <div className="studio-page relative mx-auto max-w-3xl px-6 py-10">
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72">
         <div className="a-drift absolute left-1/2 top-[-140px] h-[320px] w-[560px] -translate-x-1/2 rounded-full bg-aria-brand/18 blur-[120px]" />
       </div>

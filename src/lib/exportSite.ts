@@ -1,3 +1,4 @@
+import { responsiveComposition } from './device'
 import { compileEffect } from './effects'
 import type { CanvasElement, CanvasPage, CustomEffect, PageMeta, SiteDbConfig } from '../types'
 
@@ -208,24 +209,9 @@ export function effectiveGeo(el, device, desktopW) {
     width: o.width != null ? o.width : el.width, height: o.height != null ? o.height : el.height, fontScale: 1 }
 }
 
-const SAFE_TOP = 44
+const responsiveComposition = ${responsiveComposition.toString()}
 export function autoLayout(elems, device, desktopW) {
-  const scale = DEVICE_FRAMES[device].width / desktopW
-  const sorted = [...elems].sort((a, b) => a.y - b.y || a.x - b.x)
-  const bands = []
-  for (const el of sorted) {
-    const b = bands[bands.length - 1]
-    if (b && el.y < b.maxY - 8) { b.items.push(el); b.maxY = Math.max(b.maxY, el.y + el.height) }
-    else bands.push({ items: [el], minY: el.y, maxY: el.y + el.height })
-  }
-  const out = {}
-  let cursor = SAFE_TOP
-  for (const b of bands) {
-    for (const el of b.items) out[el.id] = { x: el.x * scale, y: cursor + (el.y - b.minY) * scale,
-      width: el.width * scale, height: el.height * scale, fontScale: scale }
-    cursor += (b.maxY - b.minY) * scale
-  }
-  return out
+  return responsiveComposition(elems, DEVICE_FRAMES[device].width, desktopW)
 }
 
 function Element({ el, geo, onNavigate }) {
@@ -241,9 +227,9 @@ function Element({ el, geo, onNavigate }) {
     background: s.background === 'transparent' ? 'transparent' : s.background,
     border: s.borderWidth ? s.borderWidth + 'px solid ' + s.borderColor : undefined,
     boxShadow: s.shadow ? '0 12px 30px -8px rgba(0,0,0,0.45)' : undefined,
-    color: s.color, fontSize: s.fontSize * geo.fontScale, fontWeight: s.fontWeight,
+    fontFamily: s.fontFamily, color: s.color, fontSize: s.fontSize, fontWeight: s.fontWeight,
     textAlign: s.textAlign, letterSpacing: s.letterSpacing, lineHeight: s.lineHeight,
-    padding: el.kind === 'svg' ? 0 : s.padding * geo.fontScale,
+    padding: el.kind === 'svg' ? 0 : s.padding,
     display: 'flex', alignItems: el.kind === 'button' ? 'center' : 'flex-start',
     justifyContent: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start',
     overflow: 'hidden', boxSizing: 'border-box',
@@ -283,14 +269,14 @@ function Element({ el, geo, onNavigate }) {
   if (el.action && el.action.type === 'url' && el.action.target) {
     return (
       <a id={'el-' + el.id} href={el.action.target} target="_blank" rel="noopener noreferrer" style={outer} onClick={(e) => { e.preventDefault(); onActivate() }}>
-        <div style={inner} className={cls || undefined}>{content}</div>
+        <div style={{ width: geo.width / geo.fontScale, height: geo.height / geo.fontScale, transform: 'scale(' + geo.fontScale + ')', transformOrigin: 'top left' }}><div style={inner} className={cls || undefined}>{content}</div></div>
       </a>
     )
   }
 
   return (
     <div id={'el-' + el.id} style={outer} onClick={hooked ? onActivate : undefined} role={hooked ? 'button' : undefined} tabIndex={hooked ? 0 : undefined} onKeyDown={onKeyDown}>
-      <div style={inner} className={cls || undefined}>{content}</div>
+      <div style={{ width: geo.width / geo.fontScale, height: geo.height / geo.fontScale, transform: 'scale(' + geo.fontScale + ')', transformOrigin: 'top left' }}><div style={inner} className={cls || undefined}>{content}</div></div>
     </div>
   )
 }
@@ -298,15 +284,20 @@ function Element({ el, geo, onNavigate }) {
 export function Page({ design, page, device, onNavigate }) {
   const els = design.elements.filter((e) => e.pageId === page.id)
   const desktopW = design.frame.width
-  const auto = design.autoAdaptive && device !== 'desktop' ? autoLayout(els, device, desktopW) : null
-  const frameW = device === 'desktop' ? desktopW : DEVICE_FRAMES[device].width
+  const [viewport, setViewport] = useState(() => ({ width: typeof window === 'undefined' ? desktopW : window.innerWidth, height: typeof window === 'undefined' ? design.frame.height : window.innerHeight }))
+  useEffect(() => { const resize = () => setViewport({ width: window.innerWidth, height: window.innerHeight }); window.addEventListener('resize', resize); return () => window.removeEventListener('resize', resize) }, [])
+  const auto = design.autoAdaptive ? responsiveComposition(els, viewport.width, desktopW) : null
+  const frameW = design.autoAdaptive ? viewport.width : device === 'desktop' ? desktopW : DEVICE_FRAMES[device].width
   const geoFor = (el) => (auto && auto[el.id]) ? auto[el.id] : effectiveGeo(el, device, desktopW)
-  let bottom = device === 'desktop' ? design.frame.height : DEVICE_FRAMES[device].height
-  els.forEach((el) => { const g = geoFor(el); bottom = Math.max(bottom, g.y + g.height) })
+  let bottom = design.autoAdaptive ? viewport.height : device === 'desktop' ? design.frame.height : DEVICE_FRAMES[device].height
+  els.forEach((el) => { const g = geoFor(el); bottom = Math.max(bottom, g.visualBottom ?? g.y + g.height) })
+  const fit = design.autoAdaptive ? Math.min(1, viewport.width / frameW) : 1
   return (
     <div style={{ minHeight: '100vh', background: '#0b0b0f', display: 'flex', justifyContent: 'center' }}>
-      <div style={{ position: 'relative', width: frameW, height: bottom, background: design.frame.background, overflow: 'hidden' }}>
+      <div style={{ width: frameW * fit, height: bottom * fit, position: 'relative', flexShrink: 0 }}>
+      <div style={{ transform: 'scale(' + fit + ')', transformOrigin: 'top left', position: 'relative', width: frameW, height: bottom, background: design.frame.background, overflow: 'hidden' }}>
         {els.map((el) => <Element key={el.id} el={el} geo={geoFor(el)} onNavigate={onNavigate} />)}
+      </div>
       </div>
     </div>
   )

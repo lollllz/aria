@@ -37,6 +37,7 @@ export const ANIMATIONS: { id: AnimationKind; label: string; hoverOnly?: boolean
 ]
 
 export interface ElementStyle {
+  fontFamily?: string
   background: string
   color: string
   fontSize: number
@@ -185,6 +186,7 @@ export interface MarketItem {
 // Each template carries a full visual identity so previews look genuinely
 // distinct — not just a swapped accent colour.
 export interface TemplateStyle {
+  layout?: 'nova' | 'folio' | 'launchpad' | 'saffron' | 'ink' | 'atlas'
   bg: string
   surface: string
   text: string
@@ -201,6 +203,7 @@ export interface TemplateStyle {
 }
 
 export interface SiteTemplate {
+  tagline?: string
   id: string
   name: string
   category: MarketCategory

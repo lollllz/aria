@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Settings2, ArrowRight } from 'lucide-react'
 import { templates } from '../data/templates'
@@ -9,72 +9,49 @@ import type { MarketCategory, SiteSettings, SiteTemplate, TemplateStyle } from '
 const categories: (MarketCategory | 'all')[] = ['all', 'business', 'portfolio', 'landing', 'restaurant', 'blog']
 const fonts = ['Template default', 'Inter', 'Georgia', 'Poppins', 'monospace'] as const
 
-// Render a marketplace-quality mini-site that reflects the template's full
-// identity — colours, fonts, corner + button treatment, hero layout — while
-// letting the settings panel override name / tagline / accent / font / theme.
+function templateStyle(tpl: SiteTemplate, settings: SiteSettings): TemplateStyle {
+  const font = settings.font === 'Template default' ? tpl.style.bodyFont
+    : settings.font === 'monospace' ? 'ui-monospace, monospace' : `${settings.font}, sans-serif`
+  return {
+    ...tpl.style,
+    accent: settings.accent,
+    bg: settings.darkMode ? '#151915' : tpl.style.bg,
+    surface: settings.darkMode ? '#282e29' : tpl.style.surface,
+    text: settings.darkMode ? '#f1f3e8' : tpl.style.text,
+    muted: settings.darkMode ? '#b7c0b1' : tpl.style.muted,
+    bodyFont: font,
+    headingFont: settings.font === 'Template default' ? tpl.style.headingFont : font,
+  }
+}
+
 function TemplatePreview({ tpl, settings }: { tpl: SiteTemplate; settings: SiteSettings }) {
-  const st = tpl.style
-  const dark = settings.darkMode
-  const bg = dark ? '#0b0b0f' : st.bg
-  const surface = dark ? '#1a1a24' : st.surface
-  const text = dark ? '#e7e7ee' : st.text
-  const muted = dark ? '#9a9aad' : st.muted
-  const accent = settings.accent
-  const bodyFont = settings.font === 'Template default'
-    ? st.bodyFont
-    : settings.font === 'monospace' ? 'ui-monospace, monospace' : `'${settings.font}', sans-serif`
-  const headingFont = settings.font === 'Template default' ? st.headingFont : bodyFont
-  const uppercase = st.uppercase ? { textTransform: 'uppercase' as const, letterSpacing: '0.05em' } : {}
-
-  const buttonStyle: React.CSSProperties = (() => {
-    switch (st.buttonStyle) {
-      case 'outline': return { background: 'transparent', color: accent, border: `1.5px solid ${accent}`, borderRadius: st.radius }
-      case 'pill': return { background: accent, color: '#fff', borderRadius: 999 }
-      case 'sharp': return { background: accent, color: '#fff', borderRadius: 0 }
-      case 'glow': return { background: accent, color: '#fff', borderRadius: st.radius, boxShadow: `0 8px 24px -6px ${accent}` }
-      default: return { background: accent, color: '#fff', borderRadius: st.radius }
-    }
-  })()
-
-  const split = st.heroLayout === 'split'
-  const align = st.heroLayout === 'centered' ? 'center' : 'left'
-
+  const frameRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0)
+  useLayoutEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+    const resize = () => setScale(frame.clientWidth / 960)
+    resize()
+    const observer = new ResizeObserver(resize)
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [])
+  const style = templateStyle(tpl, settings)
+  const elements = buildSiteElements({style, sections:tpl.sections,
+    siteName:settings.siteName || tpl.name, tagline:settings.tagline || tpl.tagline || tpl.name, blurb:tpl.blurb})
   return (
-    <div aria-hidden="true" className="overflow-hidden rounded-xl border border-aria-border shadow-2xl" style={{ background: bg, color: text, fontFamily: bodyFont }}>
-      {/* Nav */}
-      <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${surface}` }}>
-        <span className="text-lg font-black" style={{ color: accent, fontFamily: headingFont, ...uppercase }}>
-          {settings.siteName || 'Your Brand'}
-        </span>
-        <div className="hidden gap-5 text-xs sm:flex" style={{ color: muted, ...uppercase }}>
-          {tpl.sections.slice(0, 4).map((s) => <span key={s}>{s}</span>)}
+    <div ref={frameRef} role="img" aria-label={`${tpl.name} website preview`} className="template-live-preview">
+        <div className="template-preview-artboard" style={{width:960,height:720,background:style.bg,transform:`scale(${scale})`}}>
+          {elements.map((el,i) => <div key={i} style={{position:'absolute',left:el.x,top:el.y,width:el.width,height:el.height,
+            background:el.style.background,color:el.style.color,fontFamily:el.style.fontFamily,
+            fontSize:el.style.fontSize,fontWeight:el.style.fontWeight,lineHeight:el.style.lineHeight,
+            letterSpacing:el.style.letterSpacing,textAlign:el.style.textAlign,
+            borderRadius:el.kind === 'ellipse' ? '50%' : el.style.radius,
+            padding:el.style.padding,boxSizing:'border-box',overflow:'hidden',
+            display:el.kind === 'button' ? 'flex' : 'block',alignItems:'center',justifyContent:'center'}}>
+            {el.kind === 'svg' ? <div className="aria-svg" style={{width:'100%',height:'100%'}} dangerouslySetInnerHTML={{__html:el.content}} /> : el.content}
+          </div>)}
         </div>
-      </div>
-
-      {/* Hero */}
-      <div className={`grid gap-6 px-8 py-12 ${split ? 'grid-cols-[1.2fr_1fr] items-center' : 'grid-cols-1'}`} style={{ textAlign: split ? 'left' : align }}>
-        <div className={split ? '' : align === 'center' ? 'mx-auto max-w-md' : 'max-w-lg'}>
-          <p className="text-3xl font-black leading-tight sm:text-4xl" style={{ fontFamily: headingFont, ...uppercase }}>
-            {settings.tagline || 'A tagline that sells your idea.'}
-          </p>
-          <p className="mt-3 text-sm" style={{ color: muted }}>{tpl.blurb}</p>
-          <span className="mt-6 inline-block px-5 py-2.5 text-sm font-semibold" style={buttonStyle}>Get started</span>
-        </div>
-        {split && (
-          <div className="aspect-[4/3] w-full rounded-xl" style={{ background: `linear-gradient(135deg, ${accent}, ${st.accent2})`, borderRadius: st.radius }} />
-        )}
-      </div>
-
-      {/* Section blocks */}
-      <div className="grid grid-cols-3 gap-3 px-8 pb-10">
-        {tpl.sections.slice(0, 3).map((s) => (
-          <div key={s} className="p-4" style={{ background: surface, borderRadius: st.radius }}>
-            <div className="mb-2 h-6 w-6" style={{ background: accent, borderRadius: st.buttonStyle === 'sharp' ? 0 : st.radius }} />
-            <p className="text-sm font-semibold" style={{ fontFamily: headingFont, ...uppercase }}>{s}</p>
-            <p className="mt-1 text-xs" style={{ color: muted }}>Lorem ipsum dolor sit amet.</p>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
@@ -87,8 +64,8 @@ export default function Templates() {
   const active = templates.find((t) => t.id === activeId)!
 
   const [settings, setSettings] = useState<SiteSettings>({
-    siteName: 'Your Brand',
-    tagline: 'A tagline that sells your idea.',
+    siteName: active.name,
+    tagline: active.tagline || active.name,
     accent: active.accent,
     font: 'Template default',
     darkMode: false,
@@ -101,35 +78,18 @@ export default function Templates() {
 
   const pick = (t: SiteTemplate) => {
     setActiveId(t.id)
-    setSettings((s) => ({ ...s, accent: t.accent }))
+    setSettings((s) => ({ ...s, accent: t.accent, siteName: s.siteName === active.name ? t.name : s.siteName, tagline: s.tagline === active.tagline ? t.tagline || t.name : s.tagline }))
   }
 
   // Generate a real, editable design from the template + current settings, then
   // open it in the canvas on its own page.
   const useTemplate = () => {
-    const st = active.style
-    const dark = settings.darkMode
-    const font =
-      settings.font === 'Template default'
-        ? st.bodyFont
-        : settings.font === 'monospace'
-          ? 'ui-monospace, monospace'
-          : `'${settings.font}', sans-serif`
-    const effStyle: TemplateStyle = {
-      ...st,
-      accent: settings.accent,
-      bg: dark ? '#0b0b0f' : st.bg,
-      surface: dark ? '#1a1a24' : st.surface,
-      text: dark ? '#e7e7ee' : st.text,
-      muted: dark ? '#9a9aad' : st.muted,
-      bodyFont: font,
-      headingFont: settings.font === 'Template default' ? st.headingFont : font,
-    }
+    const effStyle = templateStyle(active, settings)
     const seeds = buildSiteElements({
       style: effStyle,
       sections: active.sections,
       siteName: settings.siteName || active.name,
-      tagline: settings.tagline || 'A tagline that sells your idea.',
+      tagline: settings.tagline || active.tagline || active.name,
       blurb: active.blurb,
     })
     loadDesign(`${active.name} site`, seeds, effStyle.bg)
@@ -137,10 +97,10 @@ export default function Templates() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="studio-page mx-auto max-w-7xl px-6 py-8">
       <div className="a-fade-up mb-6">
         <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
-        <p className="text-sm text-aria-muted">Each one has its own distinct look. Pick a starting point, tune the settings, make it yours.</p>
+        <p className="text-sm text-aria-muted">Six starting points with a point of view. Choose a direction, then make it your own.</p>
       </div>
 
       <div className="a-fade-up a-d1 mb-6 flex flex-wrap gap-2">
@@ -158,9 +118,9 @@ export default function Templates() {
         ))}
       </div>
 
-      <div className="a-fade-up a-d2 grid gap-6 lg:grid-cols-[280px_1fr_260px]">
+      <div className="a-fade-up a-d2 grid gap-6 xl:grid-cols-[200px_minmax(0,1fr)_220px]">
         {/* Template list */}
-        <div className="a-stagger space-y-2">
+        <div className="template-picker a-stagger space-y-2">
           {filtered.map((t) => (
             <button
               key={t.id}
@@ -185,7 +145,7 @@ export default function Templates() {
         </div>
 
         {/* Live preview */}
-        <div>
+        <div className="min-w-0">
           <TemplatePreview tpl={active} settings={settings} />
           <button
             onClick={useTemplate}
@@ -216,10 +176,10 @@ export default function Templates() {
             <div className="flex items-center gap-2">
               <input type="color" value={settings.accent} onChange={(e) => setSettings({ ...settings, accent: e.target.value })}
                 aria-label="Accent color"
-                className="h-8 w-8 cursor-pointer rounded-md border border-aria-border bg-transparent" />
+                className="h-8 w-8 shrink-0 cursor-pointer rounded-md border border-aria-border bg-transparent" />
               <input value={settings.accent} onChange={(e) => setSettings({ ...settings, accent: e.target.value })}
                 aria-label="Accent color hex"
-                className="flex-1 rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand" />
+                className="min-w-0 w-0 flex-1 rounded-md border border-aria-border bg-aria-panel-2 px-2 py-1.5 text-sm focus:border-aria-brand" />
             </div>
           </label>
 

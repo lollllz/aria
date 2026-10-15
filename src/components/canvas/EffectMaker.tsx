@@ -1,3 +1,4 @@
+import StudioIcon from '../StudioIcon'
 import { useMemo, useState } from 'react'
 import { X, Wand2, Save, Share2, Sparkles } from 'lucide-react'
 import { compileEffect, EFFECT_TEMPLATE, useEffectsStore } from '../../store/effectsStore'
@@ -109,7 +110,7 @@ export default function EffectMaker() {
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-aria-border px-5 py-3">
-          <span className="text-xs text-aria-muted">{shared ? '✓ Shared to the marketplace' : 'Saved effects appear in the animation picker.'}</span>
+          <span className="inline-flex items-center gap-1 text-xs text-aria-muted">{shared ? <><StudioIcon name="check" size={12} /> Shared to the marketplace</> : 'Saved effects appear in the animation picker.'}</span>
           <div className="flex gap-2">
             <button onClick={share} disabled={shared}
               className="flex items-center gap-1.5 rounded-lg border border-aria-border px-4 py-2 text-sm font-semibold text-aria-text transition hover:bg-aria-panel-2 disabled:opacity-40">

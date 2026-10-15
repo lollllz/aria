@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import { sanitizeSvg, useCanvasStore } from '../../store/canvasStore'
 import { useEffectsStore } from '../../store/effectsStore'
-import { effectiveGeo } from '../../lib/device'
+import { autoLayout, effectiveGeo } from '../../lib/device'
 import { ANIMATIONS, ANIM_DEFAULT_DURATION, type ActionType, type CanvasElement } from '../../types'
 import {
   Trash2, Copy, ArrowUp, ArrowDown, Lock, Unlock, AlignLeft, AlignCenter, AlignRight, Zap, Wand2, Plus,
@@ -279,7 +279,9 @@ export default function Inspector({ element }: { element: CanvasElement | null }
         </section>
 
         {(() => {
-          const geo = effectiveGeo(element, device, autoAdaptive, page.width)
+          const geo = autoAdaptive && device !== 'desktop'
+            ? autoLayout(elements.filter(e => e.pageId === element.pageId), device, page.width)[element.id]
+            : effectiveGeo(element, device, false, page.width)
           const geoEditable = !(autoAdaptive && device !== 'desktop')
           const overridden = device !== 'desktop' && !autoAdaptive && element[device] != null
           return (
@@ -302,7 +304,7 @@ export default function Inspector({ element }: { element: CanvasElement | null }
               )}
               {autoAdaptive && device !== 'desktop' && (
                 <p className="mt-1 text-[11px] leading-relaxed text-aria-muted">
-                  Auto-adaptive is on — this device mirrors desktop, scaled. Turn off <span className="text-aria-brand-2">Auto</span> to customize.
+                  Auto-adaptive is on — sections and columns adapt to this screen. Turn off <span className="text-aria-brand-2">Auto</span> to customize.
                 </p>
               )}
             </section>

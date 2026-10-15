@@ -112,12 +112,13 @@ function ElementView({
     border: s.borderWidth ? `${s.borderWidth}px solid ${s.borderColor}` : undefined,
     boxShadow: s.shadow ? '0 12px 30px -8px rgba(0,0,0,0.45)' : undefined,
     color: s.color,
-    fontSize: s.fontSize * geo.fontScale,
+    fontSize: s.fontSize,
     fontWeight: s.fontWeight,
+    fontFamily: s.fontFamily,
     textAlign: s.textAlign,
     letterSpacing: s.letterSpacing,
     lineHeight: s.lineHeight,
-    padding: el.kind === 'svg' ? 0 : s.padding * geo.fontScale,
+    padding: el.kind === 'svg' ? 0 : s.padding,
     display: 'flex',
     alignItems: el.kind === 'button' ? 'center' : 'flex-start',
     justifyContent: s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start',
@@ -203,6 +204,7 @@ function ElementView({
       }}
       className={!preview && selected && !editing ? 'outline-2 outline-aria-brand' : undefined}
     >
+      <div style={{ width: geo.width / geo.fontScale, height: geo.height / geo.fontScale, transform: `scale(${geo.fontScale})`, transformOrigin: 'top left' }}>
       <div
         ref={editRef}
         style={{ ...inner, cursor: editing ? 'text' : inner.cursor, outline: editing ? '2px solid #7c5cff' : undefined }}
@@ -222,6 +224,8 @@ function ElementView({
         }}
       >
         {editing ? null : content}
+      </div>
+
       </div>
 
       {!preview && selected && canEdit && !editing &&
@@ -286,6 +290,17 @@ export default function CanvasEditor() {
   const announce = (msg: string) => setStatus(msg)
   const drag = useRef<DragState>(null)
   const svgInput = useRef<HTMLInputElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const resize = () => setViewportSize({ width: viewport.clientWidth, height: viewport.clientHeight })
+    resize()
+    const observer = new ResizeObserver(resize)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [])
 
   // Show the onboarding tutorial on the first canvas visit.
   useEffect(() => {
@@ -313,15 +328,18 @@ export default function CanvasEditor() {
   const pageElements = elements.filter((e) => e.pageId === currentPageId)
   const selected = elements.find((e) => e.id === selectedId) ?? null
 
-  // Auto-adaptive reflow map for the current (non-desktop) device.
+  // Infer the responsive layout for the selected device.
   const autoMap =
     autoAdaptive && device !== 'desktop' ? autoLayout(pageElements, device, page.width) : null
 
   // Current device frame + whether elements are hand-editable on this device.
   const baseFrame = device === 'desktop' ? { width: page.width, height: page.height } : DEVICE_FRAMES[device]
-  const frame = autoMap
-    ? { width: baseFrame.width, height: Math.max(baseFrame.height, autoLayoutHeight(autoMap)) }
-    : baseFrame
+  const frame = baseFrame
+  const contentHeight = autoMap ? Math.max(frame.height, autoLayoutHeight(autoMap)) : frame.height
+  const bezel = device === 'mobile' ? 28 : 0
+  const canvasZoom = autoAdaptive && viewportSize.width > 0
+    ? Math.min(1, Math.max(0.05, (viewportSize.width - 80) / (frame.width + bezel)), Math.max(0.05, (viewportSize.height - 80) / (frame.height + bezel)))
+    : 1
   const geoEditable = !(autoAdaptive && device !== 'desktop')
   const geoFor = (el: CanvasElement): EffGeo =>
     autoMap?.[el.id] ?? effectiveGeo(el, device, false, page.width)
@@ -336,10 +354,10 @@ export default function CanvasEditor() {
       const d = drag.current
       if (!d) return
       if (d.mode === 'move') {
-        setGeo(d.id, { x: d.origX + (e.clientX - d.startX), y: d.origY + (e.clientY - d.startY) })
+        setGeo(d.id, { x: d.origX + (e.clientX - d.startX) / canvasZoom, y: d.origY + (e.clientY - d.startY) / canvasZoom })
       } else {
-        const dx = e.clientX - d.startX
-        const dy = e.clientY - d.startY
+        const dx = (e.clientX - d.startX) / canvasZoom
+        const dy = (e.clientY - d.startY) / canvasZoom
         const o = d.orig
         const corner = d.handle.length === 2
         // Corners keep the aspect ratio when scaling type, or when Shift is held.
@@ -384,7 +402,7 @@ export default function CanvasEditor() {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
     }
-  }, [setGeo, updateStyle])
+  }, [setGeo, updateStyle, canvasZoom])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -497,7 +515,7 @@ export default function CanvasEditor() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-aria-bg">
+    <div className="studio-editor flex h-full flex-col bg-aria-bg">
       <LiveStatus message={status} />
       {/* Top bar */}
       <div className="flex h-12 items-center justify-between border-b border-aria-border px-3">
@@ -538,7 +556,7 @@ export default function CanvasEditor() {
             aria-pressed={autoAdaptive}
             aria-label="Auto-adaptive layout"
             onClick={() => setAutoAdaptive(!autoAdaptive)}
-            title="Auto-adaptive: mirror the desktop layout onto smaller screens, scaled to fit"
+            title="Auto: adapt sections and columns to the screen, keeping text readable and artwork proportional"
             className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm transition ${
               autoAdaptive ? 'bg-aria-brand/20 text-aria-brand-2' : 'text-aria-muted hover:text-aria-text'
             }`}
@@ -648,25 +666,31 @@ export default function CanvasEditor() {
         )}
 
         <div
+          ref={viewportRef}
           className={`min-w-0 flex-1 overflow-auto p-10 ${showGrid && !preview ? 'aria-grid-bg' : ''}`}
           onPointerDown={() => select(null)}
         >
           <div className="grid min-h-full place-items-center">
+          <div style={{ width: (frame.width + bezel) * canvasZoom, height: (frame.height + bezel) * canvasZoom }}>
+          <div style={{ width: frame.width + bezel, height: frame.height + bezel, transform: `scale(${canvasZoom})`, transformOrigin: 'top left' }}>
             {(() => {
               const phone = device === 'mobile'
               const frameEl = (
                 <div
                   role="listbox"
+                  tabIndex={0}
                   aria-label="Canvas"
+                  className={autoMap ? 'canvas-device-viewport' : undefined}
                   aria-activedescendant={selectedId ? `el-${selectedId}` : undefined}
                   onPointerDown={(e) => e.stopPropagation()}
                   style={{
                     width: frame.width, height: frame.height, background: page.background,
-                    position: 'relative', borderRadius: phone ? 36 : 6,
+                    position: 'relative', borderRadius: 6,
                     boxShadow: phone ? 'none' : '0 20px 60px -20px rgba(0,0,0,0.6)',
-                    outline: preview ? 'none' : '1px solid #2a2a37', overflow: 'hidden',
+                    outline: preview ? 'none' : '1px solid #2a2a37', overflowX: 'hidden', overflowY: autoMap ? 'auto' : 'hidden',
                   }}
                 >
+                  <div style={{ position: 'relative', width: frame.width, height: contentHeight }}>
                   {pageElements.map((el) => (
                     <ElementView
                       key={el.id}
@@ -682,31 +706,28 @@ export default function CanvasEditor() {
                       onActivate={activate}
                     />
                   ))}
+                  </div>
                 </div>
               )
 
-              // Wrap the mobile artboard in a phone bezel with a notch.
+              // A simple bezel identifies the mobile frame without covering the design.
               if (phone) {
                 return (
                   <div
                     style={{
-                      padding: 12, borderRadius: 52, background: '#0b0b0f',
+                      padding: 12, borderRadius: 20, background: '#0b0b0f',
                       border: '2px solid #2a2a37', position: 'relative',
                       boxShadow: '0 30px 80px -20px rgba(0,0,0,0.75)',
                     }}
                   >
-                    <div
-                      style={{
-                        position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)',
-                        width: 130, height: 26, background: '#0b0b0f', borderRadius: 16, zIndex: 5,
-                      }}
-                    />
                     {frameEl}
                   </div>
                 )
               }
               return frameEl
             })()}
+          </div>
+          </div>
           </div>
         </div>
 

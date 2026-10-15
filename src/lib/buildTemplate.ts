@@ -1,3 +1,4 @@
+import { buildTemplateLayout } from './templateLayouts'
 import type {
   CanvasElement, ElementStyle, MarketCategory, MarketItem, TemplateStyle,
 } from '../types'
@@ -40,6 +41,7 @@ export function buildSiteElements(opts: {
   blurb: string
 }): ElementSeed[] {
   const { style: st, sections, siteName, tagline, blurb } = opts
+  if (st.layout) return buildTemplateLayout(st, siteName, tagline)
   const upper = st.uppercase
     ? { letterSpacing: 1 } // approximate uppercase feel via tracking
     : {}

@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Landing from './routes/Landing'
 import CanvasEditor from './routes/CanvasEditor'
-import Templates from './routes/Templates'
+const Templates = lazy(() => import('./routes/Templates'))
 import Marketplace from './routes/Marketplace'
 import Settings from './routes/Settings'
 import EffectStyles from './components/canvas/EffectStyles'
@@ -47,7 +47,7 @@ function Shell() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/canvas" element={<CanvasEditor />} />
-          <Route path="/templates" element={<Templates />} />
+          <Route path="/templates" element={<Suspense fallback={<p className="p-6 text-aria-muted" role="status">Opening the collection…</p>}><Templates /></Suspense>} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

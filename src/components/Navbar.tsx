@@ -1,7 +1,7 @@
+import StudioIcon from './StudioIcon'
 import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { LayoutTemplate, Store, MousePointer2, X, User, Server } from 'lucide-react'
-import ariaMark from '../assets/aria-mark.svg'
 import { useProfileStore } from '../store/profileStore'
 import GoogleSignInButton from './GoogleSignInButton'
 import Dialog from './Dialog'
@@ -36,20 +36,12 @@ export default function Navbar() {
   }
 
   return (
-    <header className="a-glass a-slide-down sticky top-0 z-50 flex h-16 items-center justify-between border-b border-aria-border/70 px-5">
+    <header className="studio-nav sticky top-0 z-50 flex items-center justify-between border-b border-aria-border">
       <Link to="/" className="group flex items-center gap-2.5">
-        <img
-          src={ariaMark}
-          alt=""
-          className="h-8 w-8 transition-transform duration-500 ease-[cubic-bezier(.34,1.56,.64,1)] group-hover:rotate-[8deg] group-hover:scale-110"
-        />
-        <span className="text-lg font-semibold tracking-tight">Aria</span>
-        <span className="ml-1 rounded-full border border-aria-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-aria-muted">
-          beta
-        </span>
+        <span className="studio-wordmark">aria<span><StudioIcon size={12} /></span></span>
       </Link>
 
-      <nav aria-label="Primary" className="flex items-center gap-1 rounded-full border border-aria-border/70 bg-aria-panel/50 p-1">
+      <nav aria-label="Primary" className="studio-nav-links flex items-center gap-1">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -106,7 +98,7 @@ export default function Navbar() {
           to="/canvas"
           className="a-cta rounded-lg px-3.5 py-1.5 text-sm font-semibold shadow-lg shadow-aria-brand/20 transition"
         >
-          Start building
+          Open canvas
         </Link>
       </div>
 

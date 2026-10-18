@@ -23,7 +23,7 @@ export default async (req: Request, _ctx: Context) => {
       db: true,
       tables,
       missing,
-      googleConfigured: Boolean(process.env.GOOGLE_CLIENT_ID),
+      authProvider: 'netlify-identity',
     })
   } catch (err) {
     return json({ ok: false, db: false, error: String(err) }, 200)

@@ -25,5 +25,5 @@ export const useSettingsStore = create<SettingsState>()(persist((set) => ({
 // The effective API base: a user-configured backend wins over the build-time default.
 export function apiBase(): string {
   const configured = useSettingsStore.getState().apiBase
-  return configured || (import.meta.env.VITE_API_BASE ?? '')
+  return configured || (import.meta.env.VITE_NETLIFY_IDENTITY === 'true' ? window.location.origin : (import.meta.env.VITE_API_BASE ?? ''))
 }

@@ -6,9 +6,19 @@
   command = "npm run build"
   publish = "dist"
 
+[build.environment]
+  VITE_NETLIFY_IDENTITY = "true"
+  NODE_VERSION = "22"
+
 [functions]
   node_bundler = "esbuild"
   directory = "netlify/functions"
 
 # Netlify v2 functions declare their own routes via `export const config = { path }`,
 # so no manual redirects are required for /api/*.
+
+# SPA routes, including OAuth redirects back to the canvas.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -240,7 +240,7 @@ export default function Settings() {
             {[
               { k: 'DATABASE_URL', v: 'your pooled connection string', icon: KeyRound },
               { k: 'ALLOWED_ORIGIN', v: window.location.origin, icon: ShieldCheck },
-              { k: 'GOOGLE_CLIENT_ID', v: 'optional — enables Google sign-in', icon: Server },
+              { k: 'Netlify Identity', v: 'enable Identity and Google under Registration → External providers', icon: Server },
             ].map(({ k, v, icon: Icon }) => (
               <div key={k} className="flex items-center gap-3 rounded-xl border border-aria-border bg-aria-bg/50 px-3 py-2">
                 <Icon size={14} className="shrink-0 text-aria-brand-2" />

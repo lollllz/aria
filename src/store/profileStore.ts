@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-// Signed-in user. Populated by Google Sign-In (verified server-side) or, as a
-// fallback when Google isn't configured, a local display name.
+// Display profile mirrors the verified Netlify Identity session.
 interface ProfileState {
-  userId: string        // Neon user id, or Google sub, or '' when signed out
+  userId: string        // Neon user id, or Identity user id, or '' when signed out
   name: string          // display name (also used as the marketplace author)
   email: string
   picture: string       // avatar URL

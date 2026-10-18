@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - name: Build
@@ -30,8 +30,6 @@ jobs:
           VITE_BASE: /aria/
           # Netlify Functions base URL (set as a repo variable in Settings → Secrets and variables → Actions → Variables).
           VITE_API_BASE: ${{ vars.VITE_API_BASE }}
-          # Google OAuth Client ID (public) for Sign-in with Google.
-          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
         run: npm run build
       - name: SPA fallback (deep links)
         run: cp dist/index.html dist/404.html

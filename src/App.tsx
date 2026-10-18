@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
+import IdentitySession from './components/IdentitySession'
 import Landing from './routes/Landing'
 import CanvasEditor from './routes/CanvasEditor'
 const Templates = lazy(() => import('./routes/Templates'))
@@ -60,6 +61,7 @@ export default function App() {
   return (
     // basename matches Vite `base` so routes work under /<repo>/ on GitHub Pages.
     <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <IdentitySession />
       <EffectStyles />
       <Shell />
     </BrowserRouter>
